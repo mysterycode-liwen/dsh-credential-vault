@@ -12,6 +12,8 @@ window.__ModuleLoader__.load({
     // Same-origin path served by the Host half (index.js). Relative so it works
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
+    /** Plugin version shown in Settings; keep in sync with package.json on release. */
+    var VERSION = '1.0.0';
 
     var DICTS = {
       en: {
@@ -67,7 +69,12 @@ window.__ModuleLoader__.load({
         resetAnswer: 'Your answer', resetNewPassword: 'New password', resetConfirm: 'Confirm new password',
         resetSubmit: 'Reset password', resetFail: 'That answer does not match.', resetDone: 'Password has been reset. Please unlock again.',
         resetUnavailable: 'No security question is configured. Restore from a backup or clear this browser\'s site data.',
-        lockIdle: 'Locked after inactivity'
+        lockIdle: 'Locked after inactivity',
+        updateTitle: 'Plugin updates', updateDesc: 'Check whether a newer version of the credential-vault plugin is available.',
+        updateCurrent: 'Current version', updateLatest: 'Latest version', updateCheck: 'Check for updates',
+        updateChecking: 'Checking…', updateAvailable: 'A newer version is available:', updateUpToDate: 'You are up to date.',
+        updateNoRelease: 'No Release published yet — update check is unavailable.', updateFail: 'Update check failed. Please try again later.',
+        updateHow: 'Update via the same way you installed this plugin.'
       },
       zh: {
         title: '凭据保险箱', subtitle: '集中管理你的账号、密码与 API Key',
@@ -122,7 +129,12 @@ window.__ModuleLoader__.load({
         resetAnswer: '你的答案', resetNewPassword: '新密码', resetConfirm: '确认新密码',
         resetSubmit: '重置密码', resetFail: '密保答案不匹配。', resetDone: '密码已重置，请重新解锁。',
         resetUnavailable: '尚未设置密保问题。请从备份恢复，或清除此浏览器的站点数据。',
-        lockIdle: '因长时间无操作已锁定'
+        lockIdle: '因长时间无操作已锁定',
+        updateTitle: '插件更新', updateDesc: '检查凭据保险箱插件是否有新版本可用。',
+        updateCurrent: '当前版本', updateLatest: '最新版本', updateCheck: '检查更新',
+        updateChecking: '检查中…', updateAvailable: '发现新版本：', updateUpToDate: '已是最新版本。',
+        updateNoRelease: '仓库尚未发布 Release，暂时无法检查更新。', updateFail: '检查更新失败，请稍后重试。',
+        updateHow: '请通过当初安装本插件的相同方式进行更新。'
       }
     };
 
@@ -261,6 +273,8 @@ window.__ModuleLoader__.load({
       '.cv-settings-card{margin-top:20px;background:var(--cv-l1);border:1px solid var(--cv-b1);border-radius:12px;padding:18px 20px}',
       '.cv-settings-card h3{margin:0 0 4px;font-size:15px;font-weight:620}',
       '.cv-settings-card .cv-card-sub{margin:0 0 16px;color:var(--cv-t2);font-size:12.5px;line-height:1.5}',
+      '.cv-update-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}',
+      '.cv-update-row .cv-form-label{color:var(--cv-t1);font-size:13px}',
       '.cv-switch-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--cv-b1)}',
       '.cv-switch-row:first-of-type{border-top:none}',
       '.cv-switch-label{font-size:13.5px;font-weight:550}',
@@ -730,11 +744,31 @@ window.__ModuleLoader__.load({
       var customQState = useState(''), customQ = customQState[0], setCustomQ = customQState[1];
       var answerState = useState(''), answer = answerState[0], setAnswer = answerState[1];
       var toastState = useState(''), toast = toastState[0], setToast = toastState[1];
+      var updateState = useState(null), updateInfo = updateState[0], setUpdateInfo = updateState[1];
+      var checkingState = useState(false), checking = checkingState[0], setChecking = checkingState[1];
       useEffect(function () {
         if (!toast) return;
         var id = setTimeout(function () { setToast(''); }, 2600);
         return function () { clearTimeout(id); };
       }, [toast]);
+
+      function checkUpdate() {
+        if (checking) return;
+        setChecking(true);
+        setUpdateInfo(null);
+        window.fetch(API + 'update-check', { credentials: 'same-origin', headers: { accept: 'application/json' } })
+          .then(function (r) { return r.json(); })
+          .then(function (body) {
+            if (!body || body.ok !== true) {
+              var msg = body && body.error ? body.error : t('updateFail');
+              setUpdateInfo({ ok: false, error: msg });
+              return;
+            }
+            setUpdateInfo(body);
+          })
+          .catch(function () { setUpdateInfo({ ok: false, error: t('updateFail') }); })
+          .then(function () { setChecking(false); });
+      }
 
       function setPassword() {
         if (!pw || String(pw).length < 4) { setToast(t('secTooShort')); return; }
@@ -906,6 +940,21 @@ window.__ModuleLoader__.load({
               ),
               h('div', null, h('button', { className: 'cv-btn', onClick: saveQuestion }, t('secSaveQuestion')))
             )
+          ),
+          h('div', { className: 'cv-settings-card' },
+            h('h3', null, t('updateTitle')),
+            h('p', { className: 'cv-card-sub' }, t('updateDesc')),
+            h('div', { className: 'cv-update-row' },
+              h('span', { className: 'cv-form-label' }, t('updateCurrent') + '：' + VERSION),
+              h('button', { type: 'button', className: 'cv-btn', disabled: checking, onClick: checkUpdate }, checking ? t('updateChecking') : t('updateCheck'))
+            ),
+            updateInfo ? h('div', { className: 'cv-card-sub', style: { marginTop: 10, marginBottom: 0 } },
+              updateInfo.ok === true
+                ? (updateInfo.updateAvailable
+                  ? t('updateAvailable') + ' ' + updateInfo.latestVersion + ' — ' + t('updateHow') + ' ' + updateInfo.releaseUrl
+                  : t('updateUpToDate') + '（' + t('updateLatest') + '：' + updateInfo.latestVersion + '）')
+                : (/release|404/i.test(String(updateInfo.error)) ? t('updateNoRelease') : t('updateFail'))
+            ) : null
           ),
           toast ? h('div', { className: 'cv-toast', role: 'status' }, toast) : null
         )
