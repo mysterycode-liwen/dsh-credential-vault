@@ -13,7 +13,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.0';
+    var VERSION = '1.0.1';
 
     var DICTS = {
       en: {
