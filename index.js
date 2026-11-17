@@ -43,6 +43,16 @@ const MAX_LIMIT = 200
 /** Fields kept in the compact "summary" projection. */
 const SUMMARY_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'expiry', 'updatedAt']
 
+/** Current plugin version. Keep in sync with package.json when releasing. */
+const CURRENT_VERSION = '1.0.0'
+
+/** Where update checks read the latest published version from (GitHub Releases latest). */
+const RELEASES_API = 'https://api.github.com/repos/mysterycode-liwen/dsh-credential-vault/releases/latest'
+const RELEASES_URL = 'https://github.com/mysterycode-liwen/dsh-credential-vault/releases/latest'
+const UPDATE_CHECK_TIMEOUT_MS = 8000
+const UPDATE_CACHE_MS = 10 * 60 * 1000
+let updateCache = { at: 0, result: null }
+
 /** Last snapshot received from the browser. */
 let snapshot = { entries: [], updatedAt: 0 }
 
@@ -143,6 +153,60 @@ function readJson(req, cap = MAX_BODY_BYTES) {
   })
 }
 
+// --- update check helpers --------------------------------------------------
+
+/** Parse a semver-ish tag into comparable parts. Returns null when unparseable. */
+function parseSemver(value) {
+  if (typeof value !== 'string') return null
+  const m = value.trim().replace(/^v/i, '').match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/)
+  if (!m) return null
+  return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]), prerelease: m[4] || '' }
+}
+
+/** Compare two parsed semvers: -1 (left older), 0 (equal), 1 (left newer). */
+function compareSemver(l, r) {
+  const parts = ['major', 'minor', 'patch']
+  for (const key of parts) {
+    if (l[key] !== r[key]) return l[key] < r[key] ? -1 : 1
+  }
+  if (!l.prerelease && !r.prerelease) return 0
+  if (!l.prerelease) return 1
+  if (!r.prerelease) return -1
+  return l.prerelease < r.prerelease ? -1 : l.prerelease > r.prerelease ? 1 : 0
+}
+
+/** Fetch the latest Release tag from GitHub, with a timeout and short cache. */
+async function checkForUpdate() {
+  if (updateCache.result && Date.now() - updateCache.at < UPDATE_CACHE_MS) {
+    return Object.assign({}, updateCache.result, { cached: true })
+  }
+  const fetchImpl = typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : undefined
+  if (!fetchImpl) throw new Error('fetch is not available on this Node runtime')
+  let signal
+  try { signal = AbortSignal.timeout(UPDATE_CHECK_TIMEOUT_MS) } catch { /* no timeout support */ }
+  const response = await fetchImpl(RELEASES_API, {
+    headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-credential-vault-update-check' },
+    ...(signal ? { signal } : {}),
+  })
+  if (!response.ok) throw new Error('GitHub API returned ' + response.status)
+  const body = await response.json()
+  const tag = body && typeof body.tag_name === 'string' ? body.tag_name : ''
+  const latest = parseSemver(tag)
+  if (!latest) throw new Error('Latest release tag is not a valid version: ' + tag)
+  const current = parseSemver(CURRENT_VERSION) || { major: 0, minor: 0, patch: 0, prerelease: '' }
+  const result = {
+    ok: true,
+    currentVersion: CURRENT_VERSION,
+    latestVersion: tag.replace(/^v/i, ''),
+    updateAvailable: compareSemver(current, latest) < 0,
+    releaseUrl: RELEASES_URL,
+    checkedAt: new Date().toISOString(),
+    cached: false,
+  }
+  updateCache = { at: Date.now(), result }
+  return result
+}
+
 // --- HTTP surface ----------------------------------------------------------
 
 async function handle(req, res, store) {
@@ -186,6 +250,20 @@ async function handle(req, res, store) {
         entries: page,
         updatedAt: snapshot.updatedAt,
       })
+    }
+
+    // Check GitHub Releases latest for a newer plugin version.
+    if (pathname === '/update-check' && method === 'GET') {
+      try {
+        return sendJson(res, 200, await checkForUpdate())
+      } catch (error) {
+        return sendJson(res, 200, {
+          ok: false,
+          currentVersion: CURRENT_VERSION,
+          error: String(error && error.message ? error.message : error),
+          checkedAt: new Date().toISOString(),
+        })
+      }
     }
 
     return fail(res, 404, 'NOT_FOUND')
