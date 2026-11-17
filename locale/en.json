@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Credential vault",
-    "description": "Store and manage all your accounts, passwords and API keys from the sidebar."
+    "description": "在侧边栏集中保存与管理账号、密码和 API Key。"
   }
 }
