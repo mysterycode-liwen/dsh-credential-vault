@@ -74,7 +74,18 @@ window.__ModuleLoader__.load({
         updateCurrent: 'Current version', updateLatest: 'Latest version', updateCheck: 'Check for updates',
         updateChecking: 'Checking…', updateAvailable: 'A newer version is available:', updateUpToDate: 'You are up to date.',
         updateNoRelease: 'No Release published yet — update check is unavailable.', updateFail: 'Update check failed. Please try again later.',
-        updateHow: 'Update via the same way you installed this plugin.'
+        updateHow: 'Update via the same way you installed this plugin.',
+        export: 'Export', import: 'Import',
+        exportWarn: 'The backup file contains plaintext passwords and API keys. Keep it safe and delete it when no longer needed. Continue?',
+        exportDone: 'Backup downloaded', exportFail: 'Export failed', exportEmpty: 'Nothing to export',
+        importTitle: 'Import credentials', importHint: 'Imported secrets are stored locally, just like the rest of your vault.',
+        importFound: 'Entries in file', importMode: 'Import mode',
+        importMerge: 'Merge (keep existing, skip duplicates)',
+        importReplace: 'Replace all existing entries',
+        importMergeHint: 'Existing entries are kept; entries whose ID already exists are skipped.',
+        importReplaceWarn: 'All current entries will be removed and replaced by the file contents. This cannot be undone.',
+        importConfirm: 'Import', importDone: 'Import complete',
+        importInvalid: 'Invalid backup file', importEmpty: 'No credentials in this file'
       },
       zh: {
         title: '凭据保险箱', subtitle: '集中管理你的账号、密码与 API Key',
@@ -134,7 +145,18 @@ window.__ModuleLoader__.load({
         updateCurrent: '当前版本', updateLatest: '最新版本', updateCheck: '检查更新',
         updateChecking: '检查中…', updateAvailable: '发现新版本：', updateUpToDate: '已是最新版本。',
         updateNoRelease: '仓库尚未发布 Release，暂时无法检查更新。', updateFail: '检查更新失败，请稍后重试。',
-        updateHow: '请通过当初安装本插件的相同方式进行更新。'
+        updateHow: '请通过当初安装本插件的相同方式进行更新。',
+        export: '导出', import: '导入',
+        exportWarn: '备份文件包含明文密码和 API Key，请妥善保管并在不需要时删除。是否继续？',
+        exportDone: '备份已下载', exportFail: '导出失败', exportEmpty: '没有可导出的凭据',
+        importTitle: '导入凭据', importHint: '导入的密钥与保险箱其他数据一样仅保存在本机。',
+        importFound: '文件中的条目数', importMode: '导入方式',
+        importMerge: '合并（保留现有，跳过重复）',
+        importReplace: '替换所有现有条目',
+        importMergeHint: '保留现有条目；ID 已存在的条目将被跳过。',
+        importReplaceWarn: '当前所有条目将被删除并由文件内容替换，此操作不可撤销。',
+        importConfirm: '导入', importDone: '导入完成',
+        importInvalid: '备份文件无效', importEmpty: '文件中没有凭据'
       }
     };
 
@@ -205,6 +227,14 @@ window.__ModuleLoader__.load({
       '.cv-btn:hover{background:var(--cv-l2);color:var(--cv-t1)}',
       '.cv-btn-primary{background:var(--cv-brand);border-color:var(--cv-brand);color:var(--cv-bg)}',
       '.cv-btn-primary:hover{background:var(--cv-brand);border-color:var(--cv-brand);color:var(--cv-bg);box-shadow:0 3px 12px rgba(0,0,0,.2)}',
+      '.cv-io{display:flex;gap:8px;align-items:center}',
+      '.cv-import-file{margin:4px 22px 0;padding:10px 12px;border-radius:9px;background:var(--cv-l1);border:1px solid var(--cv-b1);font-size:12.5px;color:var(--cv-t1);overflow-wrap:anywhere}',
+      '.cv-import-modes{display:flex;flex-direction:column;gap:10px}',
+      '.cv-import-opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--cv-b1);border-radius:9px;cursor:pointer;background:var(--cv-l1)}',
+      '.cv-import-opt input{margin-top:2px;accent-color:var(--cv-brand)}',
+      '.cv-import-opt-name{font-size:13px;font-weight:550;color:var(--cv-t1)}',
+      '.cv-import-opt-hint{font-size:12px;color:var(--cv-t2);margin-top:3px;line-height:1.45}',
+      '.cv-import-warn{color:var(--cv-err);font-weight:550}',
       '.cv-mini{padding:4px 9px;border-radius:7px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t2);font-size:11.5px;cursor:pointer;white-space:nowrap}',
       '.cv-mini:hover{color:var(--cv-t1);background:var(--cv-l2)}',
       '.cv-count{margin:16px 2px 10px;color:var(--cv-t2);font-size:12.5px}',
@@ -341,6 +371,51 @@ window.__ModuleLoader__.load({
     }
     function uid() {
       return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    }
+
+    // ---- Backup: export / import ----------------------------------------
+    // The backup is a plain JSON file so it is portable. It deliberately
+    // contains the real secret values (masked data would be useless to restore).
+    var BACKUP_FORMAT = 'dsh-credential-vault-backup';
+    var BACKUP_VERSION = 1;
+    function buildBackup(arr) {
+      return {
+        format: BACKUP_FORMAT,
+        version: BACKUP_VERSION,
+        exportedAt: new Date().toISOString(),
+        app: 'dsh-credential-vault',
+        entries: arr.map(function (e) { return normalize(e); })
+      };
+    }
+    function exportBackup(arr) {
+      if (!arr || arr.length === 0) return false;
+      try {
+        var payload = JSON.stringify(buildBackup(arr), null, 2);
+        var blob = new Blob([payload], { type: 'application/json;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        var d = new Date();
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
+        var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
+        a.href = url;
+        a.download = 'credential-vault-' + stamp + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 1000);
+        return true;
+      } catch (e) { return false; }
+    }
+    // Returns { entries: [...] } or throws a recognisable error.
+    function parseBackup(text) {
+      var data;
+      try { data = JSON.parse(text); } catch (e) { throw new Error('parse'); }
+      var arr = null;
+      if (data && Array.isArray(data.entries)) arr = data.entries;
+      else if (Array.isArray(data)) arr = data; // tolerate a bare array
+      if (!arr) throw new Error('shape');
+      var clean = arr.filter(function (e) { return e && typeof e === 'object'; }).map(normalize);
+      return clean;
     }
 
     // ---- Access-password security store ---------------------------------
@@ -685,6 +760,77 @@ window.__ModuleLoader__.load({
       );
     }
 
+    function ImportModal(props) {
+      var t = props.t;
+      var fileState = useState(null), fileInfo = fileState[0], setFileInfo = fileState[1];
+      var entriesState = useState(null), pending = entriesState[0], setPending = entriesState[1];
+      var modeState = useState('merge'), mode = modeState[0], setMode = modeState[1];
+      var errState = useState(''), err = errState[0], setErr = errState[1];
+      var inputRef = useState({})[0];
+
+      function onFile(ev) {
+        var f = ev.target.files && ev.target.files[0];
+        if (!f) return;
+        setErr(''); setPending(null);
+        setFileInfo({ name: f.name, size: f.size });
+        if (typeof FileReader === 'undefined') { setErr(t('importInvalid')); return; }
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var clean = parseBackup(String(reader.result || ''));
+            setPending(clean);
+            if (clean.length === 0) setErr(t('importEmpty'));
+          } catch (e) { setErr(t('importInvalid')); setPending(null); }
+        };
+        reader.onerror = function () { setErr(t('importInvalid')); setPending(null); };
+        reader.readAsText(f, 'utf-8');
+      }
+      function submit() {
+        if (!pending || pending.length === 0) { setErr(t('importEmpty')); return; }
+        props.onImport(pending, mode);
+      }
+      return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
+        h('div', { className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('importTitle'), tabIndex: -1,
+          onKeyDown: function (e) { if (e.key === 'Escape') props.onCancel(); } },
+          h('div', { className: 'cv-modal-head' }, h('h2', null, t('importTitle'))),
+          h('div', { className: 'cv-modal-hint' }, t('importHint')),
+          h('div', { className: 'cv-modal-body' },
+            h('input', {
+              ref: function (el) { inputRef.el = el; },
+              type: 'file', accept: '.json,application/json', style: { display: 'none' },
+              onChange: onFile
+            }),
+            h('button', { type: 'button', className: 'cv-btn', onClick: function () { if (inputRef.el) inputRef.el.click(); } },
+              fileInfo ? '📄 ' + fileInfo.name : t('import')),
+            fileInfo ? h('div', { className: 'cv-import-file' },
+              t('importFound') + '：' + (pending ? pending.length : '…')) : null,
+            h('div', { className: 'cv-form-label' }, t('importMode')),
+            h('div', { className: 'cv-import-modes' },
+              h('label', { className: 'cv-import-opt' },
+                h('input', { type: 'radio', name: 'cv-import-mode', checked: mode === 'merge', onChange: function () { setMode('merge'); } }),
+                h('div', null,
+                  h('div', { className: 'cv-import-opt-name' }, t('importMerge')),
+                  h('div', { className: 'cv-import-opt-hint' }, t('importMergeHint'))
+                )
+              ),
+              h('label', { className: 'cv-import-opt' + (mode === 'replace' ? ' cv-import-warn' : '') },
+                h('input', { type: 'radio', name: 'cv-import-mode', checked: mode === 'replace', onChange: function () { setMode('replace'); } }),
+                h('div', null,
+                  h('div', { className: 'cv-import-opt-name' }, t('importReplace')),
+                  h('div', { className: 'cv-import-opt-hint' }, t('importReplaceWarn'))
+                )
+              )
+            ),
+            err ? h('div', { className: 'cv-field-error', role: 'alert' }, err) : null
+          ),
+          h('div', { className: 'cv-modal-foot' },
+            h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
+            h('button', { className: 'cv-btn cv-btn-primary', disabled: !pending || pending.length === 0, onClick: submit }, t('importConfirm'))
+          )
+        )
+      );
+    }
+
     function LockScreen(props) {
       var t = props.t;
       var pwState = useState(''), pw = pwState[0], setPw = pwState[1];
@@ -979,6 +1125,7 @@ window.__ModuleLoader__.load({
       var editingState = useState(null), editing = editingState[0], setEditing = editingState[1];
       var toastState = useState(''), toast = toastState[0], setToast = toastState[1];
       var secRevState = useState(0), secRev = secRevState[0], setSecRev = secRevState[1];
+      var importState = useState(false), importing = importState[0], setImporting = importState[1];
 
       useEffect(function () {
         var initial = loadEntries();
@@ -1069,6 +1216,28 @@ window.__ModuleLoader__.load({
         setEntries(function (prev) { return prev.filter(function (x) { return x.id !== id; }); });
         setToast(t('deleted'));
       }
+      function doExport() {
+        if (entries.length === 0) { setToast(t('exportEmpty')); return; }
+        if (!window.confirm(t('exportWarn'))) return;
+        setToast(exportBackup(entries) ? t('exportDone') : t('exportFail'));
+      }
+      function doImport(incoming, mode) {
+        setEntries(function (prev) {
+          if (mode === 'replace') return incoming.map(function (e) {
+            var n = Object.assign({}, e); n.id = n.id || uid(); return n;
+          });
+          var byId = {};
+          prev.forEach(function (e) { byId[e.id] = true; });
+          var added = incoming.filter(function (e) {
+            var id = e.id || uid();
+            if (byId[id]) return false;
+            byId[id] = true; return true;
+          }).map(function (e) { return Object.assign({}, e, { id: e.id || uid() }); });
+          return prev.concat(added);
+        });
+        setImporting(false);
+        setToast(t('importDone'));
+      }
 
       var q = String(query).trim().toLowerCase();
       var list = entries.filter(function (e) {
@@ -1103,7 +1272,11 @@ window.__ModuleLoader__.load({
                 h('p', { className: 'cv-sub' }, t('subtitle'))
               )
             ),
-            h('button', { className: 'cv-btn cv-btn-primary', onClick: openNew }, '+ ' + t('add'))
+            h('div', { className: 'cv-io' },
+              h('button', { className: 'cv-btn', onClick: doExport }, t('export')),
+              h('button', { className: 'cv-btn', onClick: function () { setImporting(true); } }, t('import')),
+              h('button', { className: 'cv-btn cv-btn-primary', onClick: openNew }, '+ ' + t('add'))
+            )
           ),
           h('div', { className: 'cv-notice' }, 'ⓘ ', t('localNotice')),
           h('div', { className: 'cv-toolbar' },
@@ -1147,6 +1320,9 @@ window.__ModuleLoader__.load({
         editing ? h(EditorModal, {
           t: t, draft: editing.draft, titleKey: editing.mode === 'new' ? 'editorNew' : 'editorEdit',
           onChange: setDraftField, onSave: saveDraft, onCancel: function () { setEditing(null); }
+        }) : null,
+        importing ? h(ImportModal, {
+          t: t, onImport: doImport, onCancel: function () { setImporting(false); }
         }) : null,
         toast ? h('div', { className: 'cv-toast', role: 'status' }, toast) : null
       );
