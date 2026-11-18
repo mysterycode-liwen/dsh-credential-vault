@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.4';
+    var VERSION = '1.0.5';
 
     var DICTS = {
       en: {
@@ -26,6 +26,7 @@ window.__ModuleLoader__.load({
         localNotice: 'Stored locally in this browser (localStorage) on this device. Not synced or encrypted — avoid shared / public browsers.',
         show: 'Show', hide: 'Hide', copy: 'Copy', visit: 'Visit', copied: 'Copied to clipboard', copyFail: 'Copy failed — select the text manually',
         visitFail: 'Could not open the browser. Check the URL and try again.',
+        visitHint: 'Returning to the conversation to open the browser…',
         edit: 'Edit', delete: 'Delete',
         emptyTitle: 'No credentials yet', emptyText: 'Click “Add” to save your first account, password or API key.',
         emptyFiltered: 'No matches',
@@ -103,6 +104,7 @@ window.__ModuleLoader__.load({
         localNotice: '数据仅保存在本机浏览器的 localStorage 中，不跨设备同步、不加密，请避免在公用/共享浏览器使用。',
         show: '显示', hide: '隐藏', copy: '复制', visit: '访问', copied: '已复制到剪贴板', copyFail: '复制失败，请手动选择文本',
         visitFail: '无法打开浏览器，请检查网址后重试。',
+        visitHint: '正在返回对话以打开浏览器…',
         edit: '编辑', delete: '删除',
         emptyTitle: '还没有凭据', emptyText: '点击「新增」保存第一条账号、密码或 API Key。',
         emptyFiltered: '没有匹配项',
@@ -1321,16 +1323,29 @@ window.__ModuleLoader__.load({
         var target = String(url || '').trim();
         if (!looksLikeUrl(target)) { setToast(t('visitFail')); return; }
         var sr = sidebarRight || (typeof ctxRef !== 'undefined' && ctxRef && ctxRef.get ? ctxRef.get('sidebarRight') : null);
-        try {
-          if (sr && typeof sr.openTab === 'function') {
-            sr.openTab('browser', { params: { url: target } });
-            return;
-          }
-        } catch (e) {}
-        try {
-          var w = window.open(target, '_blank', 'noopener,noreferrer');
-          if (!w) setToast(t('visitFail'));
-        } catch (e) { setToast(t('visitFail')); }
+        var lay = layout || (typeof ctxRef !== 'undefined' && ctxRef && ctxRef.get ? ctxRef.get('layout') : null);
+        // The vault is a keyed main panel that replaces the Conversation, so the
+        // sidebar-right controller has no mounted session surface while we are
+        // selected; openTab() throws in that state. Return to the Conversation
+        // first, then retry until the surface is mounted (bounded to ~1.2s).
+        try { if (lay && typeof lay.selectPanel === 'function') lay.selectPanel(null); } catch (e) {}
+        setToast(t('visitHint'));
+        var attempts = 0;
+        function openWhenReady() {
+          var right = sr || (typeof ctxRef !== 'undefined' && ctxRef && ctxRef.get ? ctxRef.get('sidebarRight') : null);
+          try {
+            if (right && typeof right.openTab === 'function') {
+              right.openTab('browser', { params: { url: target } });
+              return;
+            }
+          } catch (e) {}
+          if (++attempts < 12) { setTimeout(openWhenReady, 100); return; }
+          try {
+            var w = window.open(target, '_blank', 'noopener,noreferrer');
+            if (!w) setToast(t('visitFail'));
+          } catch (e) { setToast(t('visitFail')); }
+        }
+        setTimeout(openWhenReady, 50);
       }
       function toggleReveal(id) {
         setRevealed(function (prev) { var n = Object.assign({}, prev); n[id] = !n[id]; return n; });
