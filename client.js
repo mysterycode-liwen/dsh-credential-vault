@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.1.7';
+    var VERSION = '1.1.8';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -363,7 +363,8 @@ window.__ModuleLoader__.load({
       '.cv-secret-toggle:hover{background:var(--cv-l2);color:var(--cv-t1)}',
       '.cv-text-security{-webkit-text-security:disc}',
       '.cv-modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px 20px}',
-      '.cv-toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--cv-t1);color:var(--cv-bg);padding:10px 18px;border-radius:10px;font-size:13px;z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,.2)}',
+      '.cv-toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--cv-t1);color:var(--cv-bg);padding:12px 22px;border-radius:12px;font-size:14px;font-weight:600;z-index:10000;box-shadow:0 12px 32px rgba(0,0,0,.3);animation:cv-toast-in .18s ease-out}',
+      '@keyframes cv-toast-in{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}',
       '.cv-lock{min-height:100%;display:flex;align-items:center;justify-content:center;padding:60px 20px}',
       '.cv-lock-card{width:100%;max-width:400px;background:var(--cv-l1);border:1px solid var(--cv-b1);border-radius:18px;padding:32px 30px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.12)}',
       '.cv-lock-icon{display:inline-flex;color:var(--cv-brand);margin-bottom:14px}',
@@ -397,6 +398,10 @@ window.__ModuleLoader__.load({
       '.cv-switch-knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}',
       '.cv-switch[aria-checked="true"] .cv-switch-knob{transform:translateX(19px)}',
       '.cv-status{margin-top:12px;font-size:12.5px;color:var(--cv-ok)}',
+      '.cv-note{margin-top:10px;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:550;display:flex;gap:8px;align-items:flex-start;animation:cv-note-in .18s ease-out}',
+      '.cv-note-ok{background:rgba(34,197,94,.12);color:var(--cv-ok);border:1px solid rgba(34,197,94,.4)}',
+      '.cv-note-err{background:rgba(239,68,68,.12);color:var(--cv-err);border:1px solid rgba(239,68,68,.4)}',
+      '@keyframes cv-note-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}',
       '.cv-field-error{color:var(--cv-err);font-size:12px;margin-top:2px}',
       '.cv-settings-fields{display:flex;flex-direction:column;gap:12px;margin-top:12px}',
       // Password generator
@@ -1142,18 +1147,21 @@ window.__ModuleLoader__.load({
       var customQState = useState(''), customQ = customQState[0], setCustomQ = customQState[1];
       var answerState = useState(''), answer = answerState[0], setAnswer = answerState[1];
       var qCurrentState = useState(''), qCurrent = qCurrentState[0], setQCurrent = qCurrentState[1];
-      var toastState = useState(''), toast = toastState[0], setToast = toastState[1];
+      var msgState = useState(null), msg = msgState[0], setMsg = msgState[1];
       var updateState = useState(null), updateInfo = updateState[0], setUpdateInfo = updateState[1];
       var checkingState = useState(false), checking = checkingState[0], setChecking = checkingState[1];
       var upgradingState = useState(false), upgrading = upgradingState[0], setUpgrading = upgradingState[1];
       var upgradeMsgState = useState(null), upgradeMsg = upgradeMsgState[0], setUpgradeMsg = upgradeMsgState[1];
       var upgradeConfirmState = useState(null), upgradeConfirmDlg = upgradeConfirmState[0], setUpgradeConfirmDlg = upgradeConfirmState[1];
       var pollRef = useRef(null);
+      // Inline card messages: shown inside the settings card where the action
+      // happened, so feedback lands exactly where the user is looking.
+      function notify(area, text, kind) { setMsg({ area: area, text: text, kind: kind || 'ok' }); }
       useEffect(function () {
-        if (!toast) return;
-        var id = setTimeout(function () { setToast(''); }, 2600);
+        if (!msg) return;
+        var id = setTimeout(function () { setMsg(null); }, 4000);
         return function () { clearTimeout(id); };
-      }, [toast]);
+      }, [msg]);
       // Clear any running poll timer when the settings page unmounts.
       useEffect(function () {
         return function () { if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null; } };
@@ -1277,61 +1285,61 @@ window.__ModuleLoader__.load({
       }
 
       function setPassword() {
-        if (!pw || String(pw).length < 4) { setToast(t('secTooShort')); return; }
-        if (pw !== confirm) { setToast(t('secMismatch')); return; }
+        if (!pw || String(pw).length < 4) { notify('password', t('secTooShort'), 'err'); return; }
+        if (pw !== confirm) { notify('password', t('secMismatch'), 'err'); return; }
         var s = Object.assign({}, getSecurity());
         function commit() {
           s.salt = s.salt || makeSalt();
           return hashWithSalt(s.salt, pw).then(function (h) {
             s.passwordHash = h;
             saveSecurity(s);
-            refresh(); setPw(''); setConfirm(''); setToast(t('secPasswordOn'));
+            refresh(); setPw(''); setConfirm(''); notify('password', t('secPasswordOn'));
           });
         }
         if (s.passwordHash) {
           verifyPassword(s, current).then(function (ok) {
-            if (!ok) { setToast(t('secCurrentWrong')); return; }
+            if (!ok) { notify('password', t('secCurrentWrong'), 'err'); return; }
             return commit();
           });
         } else commit();
       }
       function saveQuestion() {
-        if (!answer) { setToast(t('secAnswer')); return; }
+        if (!answer) { notify('question', t('secAnswer'), 'err'); return; }
         var s = Object.assign({}, getSecurity());
         var chosen = SECURITY_QUESTIONS.filter(function (x) { return x.k === q; })[0] || SECURITY_QUESTIONS[0];
         var label = q === 'custom' ? (customQ || '') : (chosen[lang] || chosen.en);
-        if (q === 'custom' && !customQ.trim()) { setToast(t('secQuestion')); return; }
+        if (q === 'custom' && !customQ.trim()) { notify('question', t('secQuestion'), 'err'); return; }
         // Once a question is set, changing it must be authorized with the current access password.
         function commit() {
           hashWithSalt(s.salt || (s.salt = makeSalt()), normalizeAnswer(answer)).then(function (h) {
             s.question = { k: q, label: label };
             s.answerHash = h;
             saveSecurity(s);
-            refresh(); setAnswer(''); setQCurrent(''); setToast(t('secQuestionSet'));
+            refresh(); setAnswer(''); setQCurrent(''); notify('question', t('secQuestionSet'));
           });
         }
         if (s.passwordHash && s.question && s.answerHash) {
-          if (!qCurrent) { setToast(t('secCurrentRequired')); return; }
+          if (!qCurrent) { notify('question', t('secCurrentRequired'), 'err'); return; }
           verifyPassword(s, qCurrent).then(function (ok) {
-            if (!ok) { setToast(t('secCurrentWrong')); return; }
+            if (!ok) { notify('question', t('secCurrentWrong'), 'err'); return; }
             return commit();
           });
         } else commit();
       }
       function toggleEnabled() {
-        if (!sec.enabled && !hasSetup()) { setToast(t('secNeedSetupFirst')); return; }
+        if (!sec.enabled && !hasSetup()) { notify('enable', t('secNeedSetupFirst'), 'err'); return; }
         var enabling = !sec.enabled;
         if (!enabling) {
           // Disabling the access password must be confirmed with the current password.
-          if (!disablePw) { setToast(t('secDisableHint')); return; }
+          if (!disablePw) { notify('enable', t('secDisableHint'), 'err'); return; }
           verifyPassword(getSecurity(), disablePw).then(function (ok) {
-            if (!ok) { setToast(t('secCurrentWrong')); return; }
+            if (!ok) { notify('enable', t('secCurrentWrong'), 'err'); return; }
             var s = Object.assign({}, getSecurity(), { enabled: false });
             lockVault();
             saveSecurity(s);
             setDisablePw('');
             refresh();
-            setToast(t('secPasswordOff'));
+            notify('enable', t('secPasswordOff'));
           });
           return;
         }
@@ -1340,11 +1348,11 @@ window.__ModuleLoader__.load({
         lockVault();
         saveSecurity(s);
         refresh();
-        setToast(t('secEnabledLocked'));
+        notify('enable', t('secEnabledLocked'));
       }
       function toggleIdle() {
         var enabling = !sec.idleEnabled;
-        if (enabling && !sec.enabled) { setToast(t('secNeedSetupFirst')); return; }
+        if (enabling && !sec.enabled) { notify('idle', t('secNeedSetupFirst'), 'err'); return; }
         var s = Object.assign({}, getSecurity(), { idleEnabled: enabling });
         if (enabling) {
           // Turning auto-lock on locks the vault right away so the policy takes effect.
@@ -1353,7 +1361,7 @@ window.__ModuleLoader__.load({
         }
         saveSecurity(s);
         refresh();
-        setToast(t(enabling ? 'secIdleOn' : 'secIdleOff'));
+        notify('idle', t(enabling ? 'secIdleOn' : 'secIdleOff'));
       }
       function setIdleMs(ms) {
         var s = Object.assign({}, getSecurity(), { idleMs: ms });
@@ -1363,6 +1371,13 @@ window.__ModuleLoader__.load({
 
       var questionLabel = sec.question ? (sec.question.label || t('secQuestion')) : null;
       var qNeedsCurrent = !!(sec.passwordHash && sec.question && sec.answerHash);
+      // Inline note inside the card where the action happened (kind: 'ok'|'err').
+      function CardNote(area) {
+        if (!msg || msg.area !== area) return null;
+        var err = msg.kind === 'err';
+        return h('div', { className: 'cv-note ' + (err ? 'cv-note-err' : 'cv-note-ok'), role: 'status' },
+          h('span', null, err ? '⚠' : '✓'), h('span', null, msg.text));
+      }
       return h('div', { className: 'cv-root' },
         h('style', null, CSS),
         h('div', { className: 'cv-settings' },
@@ -1383,6 +1398,7 @@ window.__ModuleLoader__.load({
               )
             ),
             h('div', { className: 'cv-status' + (sec.enabled ? '' : ' cv-switch-hint') }, sec.enabled ? '✓ ' + t('secPasswordOn') : t('secPasswordOff')),
+            CardNote('enable'),
             sec.enabled ? h('div', { className: 'cv-settings-fields', style: { marginTop: 12 } },
               h('p', { className: 'cv-card-sub', style: { marginTop: 0 } }, t('secDisableHint')),
               h(SecretInput, { t: t, value: disablePw, placeholder: t('secCurrent'), onChange: function (ev) { setDisablePw(ev.target.value); },
@@ -1404,6 +1420,7 @@ window.__ModuleLoader__.load({
               )
             ),
             h('div', { className: 'cv-status' + (sec.idleEnabled ? '' : ' cv-switch-hint') }, sec.idleEnabled ? '✓ ' + t('secIdleOn') : t('secIdleOff')),
+            CardNote('idle'),
             sec.idleEnabled ? h('label', { className: 'cv-form-row', style: { marginTop: 10 } },
               h('span', { className: 'cv-form-label' }, t('secIdleDuration')),
               h('select', { className: 'cv-input', value: String(sec.idleMs || IDLE_MS), onChange: function (ev) { setIdleMs(Number(ev.target.value)); } },
@@ -1433,7 +1450,8 @@ window.__ModuleLoader__.load({
                 h(SecretInput, { t: t, value: confirm, onChange: function (ev) { setConfirm(ev.target.value); },
                   onKeyDown: function (e) { if (e.key === 'Enter') setPassword(); } })
               ),
-              h('div', null, h('button', { className: 'cv-btn cv-btn-primary', onClick: setPassword }, t('secSavePassword')))
+              h('div', null, h('button', { className: 'cv-btn cv-btn-primary', onClick: setPassword }, t('secSavePassword'))),
+              CardNote('password')
             )
           ),
           h('div', { className: 'cv-settings-card' },
@@ -1459,7 +1477,8 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'cv-form-label' }, t('secAnswer')),
                 h(SecretInput, { t: t, value: answer, placeholder: t('secAnswer'), onChange: function (ev) { setAnswer(ev.target.value); } })
               ),
-              h('div', null, h('button', { className: 'cv-btn', onClick: saveQuestion }, t('secSaveQuestion')))
+              h('div', null, h('button', { className: 'cv-btn', onClick: saveQuestion }, t('secSaveQuestion'))),
+              CardNote('question')
             )
           ),
           h('div', { className: 'cv-settings-card' },
@@ -1486,8 +1505,7 @@ window.__ModuleLoader__.load({
           upgradeConfirmDlg ? h(ConfirmModal, {
             t: t, title: upgradeConfirmDlg.title, message: upgradeConfirmDlg.message, confirmLabel: upgradeConfirmDlg.confirmLabel,
             onConfirm: upgradeConfirmDlg.onConfirm, onCancel: function () { setUpgradeConfirmDlg(null); }
-          }) : null,
-          toast ? h('div', { className: 'cv-toast', role: 'status' }, toast) : null
+          }) : null
         )
       );
     }
