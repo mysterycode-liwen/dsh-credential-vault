@@ -14,7 +14,23 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.1.0';
+    var VERSION = '1.1.1';
+
+    // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
+    // Used to decide "update available" against THIS client's version, so the
+    // decision can't disagree with the version shown in the UI (host index.js
+    // may still hold an older CURRENT_VERSION until Harness is restarted).
+    function compareVersions(a, b) {
+      function parts(v) {
+        var m = String(v || '').trim().replace(/^v/i, '').match(/^(\d+)\.(\d+)\.(\d+)/);
+        return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+      }
+      var x = parts(a), y = parts(b);
+      for (var i = 0; i < 3; i++) {
+        if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+      }
+      return 0;
+    }
 
     var DICTS = {
       en: {
@@ -1130,6 +1146,10 @@ window.__ModuleLoader__.load({
               setUpdateInfo({ ok: false, error: msg });
               return;
             }
+            // Recompute against THIS client's version so the "new version"
+            // verdict always agrees with the version number shown in the UI.
+            // The host's CURRENT_VERSION may be stale until Harness restarts.
+            body.updateAvailable = compareVersions(VERSION, body.latestVersion) < 0;
             setUpdateInfo(body);
           })
           .catch(function () { setUpdateInfo({ ok: false, error: t('updateFail') }); })
