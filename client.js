@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.1.2';
+    var VERSION = '1.1.3';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -616,7 +616,7 @@ window.__ModuleLoader__.load({
         function pad(n) { return n < 10 ? '0' + n : '' + n; }
         var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
         a.href = url;
-        a.download = 'credential-vault-' + stamp + '.json';
+        a.download = '凭据保险箱-' + stamp + '.json';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
