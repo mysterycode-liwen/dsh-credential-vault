@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.8';
+    var VERSION = '1.0.9';
 
     var DICTS = {
       en: {
@@ -1526,8 +1526,8 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cv-modal-body' },
             scanErr ? h('div', { className: 'cv-audit-clean', style: { color: 'var(--cv-err)' } }, scanErr) : null,
             result ? h('div', { className: 'cv-audit-summary' },
-              h('span', null, h('b', null, result.scanned) + ' ' + t('auditSummary')),
-              h('span', null, h('b', null, result.issues.length) + ' ' + t('auditIssues'))
+              h('span', null, h('b', null, result.scanned), ' ' + t('auditSummary')),
+              h('span', null, h('b', null, result.issues.length), ' ' + t('auditIssues'))
             ) : null,
             result && result.issues.length === 0 ? h('div', { className: 'cv-audit-clean' }, '✓ ' + t('auditClean')) : null,
             result && result.issues.length > 0 ? h('div', { className: 'cv-audit-list' },
