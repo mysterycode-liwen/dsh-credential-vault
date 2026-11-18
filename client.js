@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.6';
+    var VERSION = '1.0.7';
 
     var DICTS = {
       en: {
@@ -218,7 +218,7 @@ window.__ModuleLoader__.load({
       account: [
         { key: 'title', label: 'fTitle', ph: 'fTitlePh', type: 'text', required: true },
         { key: 'username', label: 'fAccount', ph: 'fAccountPh', type: 'text', mono: true },
-        { key: 'password', label: 'fPassword', ph: 'fPasswordPh', type: 'secret', mono: true },
+        { key: 'password', label: 'fPassword', ph: 'fPasswordPh', type: 'secret', mono: true, generatable: true },
         { key: 'url', label: 'fUrl', ph: 'fUrlPh', type: 'text', isUrl: true },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
@@ -846,7 +846,7 @@ window.__ModuleLoader__.load({
         } else if (f.type === 'secret') {
           control = h('div', { className: 'cv-secret-input' },
             h('input', baseInput(f, { type: showSecret ? 'text' : 'password' })),
-            typeof props.onGenerate === 'function' ? h('button', { type: 'button', className: 'cv-gen-btn', title: t('genField'), onClick: function () { props.onGenerate(f.key); } }, '⚙ ' + t('genButton')) : null,
+            (f.generatable && typeof props.onGenerate === 'function') ? h('button', { type: 'button', className: 'cv-gen-btn', title: t('genField'), onClick: function () { props.onGenerate(f.key); } }, '⚙ ' + t('genButton')) : null,
             h('button', { type: 'button', className: 'cv-secret-toggle', onClick: function () { setShowSecret(!showSecret); } }, showSecret ? t('hide') : t('show'))
           );
         } else if (f.type === 'secretarea') {
@@ -855,7 +855,7 @@ window.__ModuleLoader__.load({
               className: 'cv-input cv-textarea cv-mono' + (showSecret ? '' : ' cv-text-security'),
               spellCheck: false
             })),
-            typeof props.onGenerate === 'function' ? h('button', { type: 'button', className: 'cv-gen-btn', title: t('genField'), onClick: function () { props.onGenerate(f.key); } }, '⚙ ' + t('genButton')) : null,
+            (f.generatable && typeof props.onGenerate === 'function') ? h('button', { type: 'button', className: 'cv-gen-btn', title: t('genField'), onClick: function () { props.onGenerate(f.key); } }, '⚙ ' + t('genButton')) : null,
             h('button', { type: 'button', className: 'cv-secret-toggle', onClick: function () { setShowSecret(!showSecret); } }, showSecret ? t('hide') : t('show'))
           );
         }
