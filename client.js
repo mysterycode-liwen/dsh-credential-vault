@@ -5,6 +5,7 @@ window.__ModuleLoader__.load({
     var h = React.createElement;
     var useState = React.useState;
     var useEffect = React.useEffect;
+    var useRef = React.useRef;
 
     var STORAGE_KEY = '@local/credential-vault:entries:v1';
     var MASK = '••••••••••••';
@@ -13,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.2';
+    var VERSION = '1.0.3';
 
     var DICTS = {
       en: {
@@ -76,6 +77,10 @@ window.__ModuleLoader__.load({
         updateChecking: 'Checking…', updateAvailable: 'A newer version is available:', updateUpToDate: 'You are up to date.',
         updateNoRelease: 'No Release published yet — update check is unavailable.', updateFail: 'Update check failed. Please try again later.',
         updateHow: 'Update via the same way you installed this plugin.',
+        upgrade: 'Upgrade', upgrading: 'Upgrading…', upgradeCheckMarket: 'Checking plugin market…',
+        upgradeConfirm: 'Upgrade with dshmarket? It uses the same plugin manager that installed this plugin. DeepSeek Harness may need a restart afterwards.',
+        upgradeStarted: 'Upgrade started…', upgradePolling: 'Installing…', upgradeNoMarket: 'The plugin market (dshmarket) is not available here. Please update via the way you installed this plugin.',
+        upgradeSuccess: 'Upgrade installed.', upgradeRestart: 'Restart DeepSeek Harness to finish.', upgradeFail: 'Upgrade failed: ',
         export: 'Export', import: 'Import',
         exportWarn: 'The backup file contains plaintext passwords and API keys. Keep it safe and delete it when no longer needed. Continue?',
         exportDone: 'Backup downloaded', exportFail: 'Export failed', exportEmpty: 'Nothing to export',
@@ -148,6 +153,10 @@ window.__ModuleLoader__.load({
         updateChecking: '检查中…', updateAvailable: '发现新版本：', updateUpToDate: '已是最新版本。',
         updateNoRelease: '仓库尚未发布 Release，暂时无法检查更新。', updateFail: '检查更新失败，请稍后重试。',
         updateHow: '请通过当初安装本插件的相同方式进行更新。',
+        upgrade: '升级', upgrading: '升级中…', upgradeCheckMarket: '正在检查插件市场…',
+        upgradeConfirm: '使用 dshmarket 升级？它会调用当初安装本插件的同一个插件管理器，升级后可能需要重启 DeepSeek Harness。',
+        upgradeStarted: '已开始升级…', upgradePolling: '正在安装…', upgradeNoMarket: '当前不可用插件市场（dshmarket），请通过当初安装本插件的方式进行更新。',
+        upgradeSuccess: '升级已安装。', upgradeRestart: '请重启 DeepSeek Harness 以完成升级。', upgradeFail: '升级失败：',
         export: '导出', import: '导入',
         exportWarn: '备份文件包含明文密码和 API Key，请妥善保管并在不需要时删除。是否继续？',
         exportDone: '备份已下载', exportFail: '导出失败', exportEmpty: '没有可导出的凭据',
@@ -307,6 +316,9 @@ window.__ModuleLoader__.load({
       '.cv-settings-card .cv-card-sub{margin:0 0 16px;color:var(--cv-t2);font-size:12.5px;line-height:1.5}',
       '.cv-update-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}',
       '.cv-update-row .cv-form-label{color:var(--cv-t1);font-size:13px}',
+      '.cv-upgrade-status{margin-top:10px;font-size:12.5px;color:var(--cv-t2);line-height:1.6}',
+      '.cv-upgrade-status.cv-ok{color:var(--cv-ok)}',
+      '.cv-upgrade-status.cv-err{color:var(--cv-err)}',
       '.cv-switch-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--cv-b1)}',
       '.cv-switch-row:first-of-type{border-top:none}',
       '.cv-switch-label{font-size:13.5px;font-weight:550}',
@@ -895,11 +907,18 @@ window.__ModuleLoader__.load({
       var toastState = useState(''), toast = toastState[0], setToast = toastState[1];
       var updateState = useState(null), updateInfo = updateState[0], setUpdateInfo = updateState[1];
       var checkingState = useState(false), checking = checkingState[0], setChecking = checkingState[1];
+      var upgradingState = useState(false), upgrading = upgradingState[0], setUpgrading = upgradingState[1];
+      var upgradeMsgState = useState(null), upgradeMsg = upgradeMsgState[0], setUpgradeMsg = upgradeMsgState[1];
+      var pollRef = useRef(null);
       useEffect(function () {
         if (!toast) return;
         var id = setTimeout(function () { setToast(''); }, 2600);
         return function () { clearTimeout(id); };
       }, [toast]);
+      // Clear any running poll timer when the settings page unmounts.
+      useEffect(function () {
+        return function () { if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null; } };
+      }, []);
 
       function checkUpdate() {
         if (checking) return;
@@ -917,6 +936,95 @@ window.__ModuleLoader__.load({
           })
           .catch(function () { setUpdateInfo({ ok: false, error: t('updateFail') }); })
           .then(function () { setChecking(false); });
+      }
+
+      // Upgrade goes through dshmarket's documented public update API v1 — the
+      // plugin market drives the same package manager that installed this plugin,
+      // so we never spawn a package manager ourselves.
+      function marketFetchJson(url, init) {
+        return window.fetch(url, Object.assign({ credentials: 'same-origin', headers: { accept: 'application/json' } }, init || {}))
+          .then(function (r) { return r.json(); });
+      }
+
+      function pollOperation(operationId) {
+        marketFetchJson('dsh-market/api/v1/operations?operationId=' + encodeURIComponent(operationId) + '&_=' + Date.now())
+          .then(function (body) {
+            var op = body && body.operation;
+            if (!op) { setUpgradeMsg({ kind: 'err', text: t('upgradeFail') + 'operation not found' }); setUpgrading(false); return; }
+            var state = op.state;
+            if (state === 'succeeded') {
+              var installed = op.installedVersion || '';
+              var restart = op.outcome && op.outcome.restartRequired;
+              setUpgradeMsg({ kind: 'ok', text: t('upgradeSuccess') + (installed ? '（' + installed + '）' : '') + (restart ? ' ' + t('upgradeRestart') : '') });
+              setUpgrading(false);
+              setUpdateInfo(null);
+              checkUpdate();
+              return;
+            }
+            if (state === 'failed' || state === 'cancelled' || state === 'rolled-back') {
+              var failure = op.failure || {};
+              setUpgradeMsg({ kind: 'err', text: t('upgradeFail') + (failure.message || failure.code || state) });
+              setUpgrading(false);
+              return;
+            }
+            // queued / running: keep polling
+            var phase = op.progress && op.progress.phase ? ' · ' + op.progress.phase : '';
+            setUpgradeMsg({ kind: '', text: t('upgradePolling') + phase });
+            pollRef.current = setTimeout(function () { pollOperation(operationId); }, 1200);
+          })
+          .catch(function () {
+            setUpgradeMsg({ kind: 'err', text: t('upgradeFail') + 'network' });
+            setUpgrading(false);
+          });
+      }
+
+      function startUpgrade() {
+        if (upgrading) return;
+        if (!window.confirm(t('upgradeConfirm'))) return;
+        setUpgrading(true);
+        setUpgradeMsg({ kind: '', text: t('upgradeCheckMarket') });
+        // Discover the market API and feature-detect the mutation endpoint.
+        marketFetchJson('dsh-market/api/v1/capabilities')
+          .then(function (cap) {
+            if (!cap || cap.schema !== 'dsh-market/update-api/v1' || !(cap.features && cap.features.update)) {
+              throw new Error('no-market');
+            }
+            setUpgradeMsg({ kind: '', text: t('upgradeStarted') });
+            return marketFetchJson(cap.endpoints.updates, {
+              method: 'POST',
+              headers: { accept: 'application/json', 'content-type': 'application/json' },
+              body: JSON.stringify({ packageName: 'dsh-credential-vault' })
+            });
+          })
+          .then(function (res) {
+            var op = res && res.operation;
+            if (res && res.schema === 'dsh-market/update-api/v1' && op && op.operationId) {
+              if (op.state === 'succeeded') {
+                setUpgradeMsg({ kind: 'ok', text: t('upgradeSuccess') + ' ' + t('upgradeRestart') });
+                setUpgrading(false);
+                setUpdateInfo(null); checkUpdate();
+                return;
+              }
+              if (op.state === 'failed' || op.state === 'cancelled' || op.state === 'rolled-back') {
+                var f = op.failure || {};
+                setUpgradeMsg({ kind: 'err', text: t('upgradeFail') + (f.message || f.code || op.state) });
+                setUpgrading(false);
+                return;
+              }
+              setUpgradeMsg({ kind: '', text: t('upgradePolling') });
+              pollOperation(op.operationId);
+              return;
+            }
+            var err = (res && (res.error || (res.failure && res.failure.message))) || t('upgradeFail');
+            if (/not installed|404/i.test(String(err))) err = t('upgradeNoMarket');
+            setUpgradeMsg({ kind: 'err', text: t('upgradeFail') + err });
+            setUpgrading(false);
+          })
+          .catch(function (e) {
+            var msg = e && e.message === 'no-market' ? t('upgradeNoMarket') : t('upgradeFail') + (e && e.message ? e.message : '');
+            setUpgradeMsg({ kind: 'err', text: msg });
+            setUpgrading(false);
+          });
       }
 
       function setPassword() {
@@ -1118,7 +1226,13 @@ window.__ModuleLoader__.load({
                   ? t('updateAvailable') + ' ' + updateInfo.latestVersion + ' — ' + t('updateHow') + ' ' + updateInfo.releaseUrl
                   : t('updateUpToDate') + '（' + t('updateLatest') + '：' + updateInfo.latestVersion + '）')
                 : (/release|404/i.test(String(updateInfo.error)) ? t('updateNoRelease') : t('updateFail'))
-            ) : null
+            ) : null,
+            updateInfo && updateInfo.ok === true && updateInfo.updateAvailable
+              ? h('div', { className: 'cv-update-row', style: { marginTop: 10 } },
+                  h('button', { type: 'button', className: 'cv-btn cv-btn-primary', disabled: upgrading, onClick: startUpgrade }, upgrading ? t('upgrading') : t('upgrade'))
+                )
+              : null,
+            upgradeMsg ? h('div', { className: 'cv-upgrade-status' + (upgradeMsg.kind === 'ok' ? ' cv-ok' : upgradeMsg.kind === 'err' ? ' cv-err' : ''), role: 'status' }, upgradeMsg.text) : null
           ),
           toast ? h('div', { className: 'cv-toast', role: 'status' }, toast) : null
         )
