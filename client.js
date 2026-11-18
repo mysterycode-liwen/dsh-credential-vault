@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.7';
+    var VERSION = '1.0.8';
 
     var DICTS = {
       en: {
@@ -111,7 +111,8 @@ window.__ModuleLoader__.load({
         auditExpired: 'Expired key', auditExpiredDesc: 'The expiry date has passed.',
         auditExpiring: 'Expiring soon', auditExpiringDesc: 'Expires within 30 days.',
         auditEdit: 'Edit', auditHigh: 'High', auditMedium: 'Medium', auditLow: 'Low',
-        auditNote: 'Secrets are never shown in the audit — only entry names and issue types.'
+        auditNote: 'Secrets are never shown in the audit — only entry names and issue types.',
+        auditFail: 'Audit could not run.'
       },
       zh: {
         title: '凭据保险箱', subtitle: '集中管理你的账号、密码与 API Key',
@@ -207,7 +208,8 @@ window.__ModuleLoader__.load({
         auditExpired: '已过期', auditExpiredDesc: '到期日期已过。',
         auditExpiring: '即将过期', auditExpiringDesc: '将在 30 天内过期。',
         auditEdit: '编辑', auditHigh: '高', auditMedium: '中', auditLow: '低',
-        auditNote: '审计中不会显示密钥明文，只显示记录名称和问题类型。'
+        auditNote: '审计中不会显示密钥明文，只显示记录名称和问题类型。',
+        auditFail: '审计运行失败。'
       }
     };
 
@@ -1499,14 +1501,22 @@ window.__ModuleLoader__.load({
       var t = props.t;
       var resultState = useState(null), result = resultState[0], setResult = resultState[1];
       var scanningState = useState(false), scanning = scanningState[0], setScanning = scanningState[1];
+      var errState = useState(''), scanErr = errState[0], setScanErr = errState[1];
       function run() {
         setScanning(true);
-        // Defer so the "Scanning…" label paints before the (synchronous) scan.
-        setTimeout(function () {
+        setScanErr('');
+        try {
+          // Run synchronously: a deferred setState may not repaint in the
+          // embedded client runtime, which made the audit look like it never ran.
           setResult(runAudit(props.entries));
-          setScanning(false);
-        }, 30);
+        } catch (e) {
+          setResult(null);
+          setScanErr(String((e && e.message) || e || t('auditFail')));
+        }
+        setScanning(false);
       }
+      // Auto-run as soon as the panel opens so results are visible immediately.
+      useEffect(function () { run(); }, []);
       function sevLabel(s) { return s === 'high' ? t('auditHigh') : s === 'medium' ? t('auditMedium') : t('auditLow'); }
       return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
         h('div', { className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('auditTitle'), tabIndex: -1,
@@ -1514,6 +1524,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cv-modal-head' }, h('h2', null, t('auditTitle'))),
           h('div', { className: 'cv-modal-hint' }, t('auditHint')),
           h('div', { className: 'cv-modal-body' },
+            scanErr ? h('div', { className: 'cv-audit-clean', style: { color: 'var(--cv-err)' } }, scanErr) : null,
             result ? h('div', { className: 'cv-audit-summary' },
               h('span', null, h('b', null, result.scanned) + ' ' + t('auditSummary')),
               h('span', null, h('b', null, result.issues.length) + ' ' + t('auditIssues'))
