@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.1.5';
+    var VERSION = '1.1.6';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -344,7 +344,7 @@ window.__ModuleLoader__.load({
       '.cv-empty-icon{display:inline-flex;color:var(--cv-b2);margin-bottom:12px}',
       '.cv-empty h3{margin:0 0 6px;color:var(--cv-t1);font-size:16px}',
       '.cv-empty p{margin:0;font-size:13px}',
-      '.cv-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}',
+      '.cv-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}',
       '.cv-modal{width:fit-content;max-width:500px;min-width:320px;max-height:90vh;overflow:auto;background:var(--cv-bg);border:1px solid var(--cv-b1);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);outline:none}',
       '.cv-modal.cv-modal-editor{min-width:500px;max-width:800px}',
       '.cv-settings .cv-modal{max-width:100%;min-width:0}',
