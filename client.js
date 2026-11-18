@@ -13,7 +13,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.1';
+    var VERSION = '1.0.2';
 
     var DICTS = {
       en: {
@@ -60,6 +60,7 @@ window.__ModuleLoader__.load({
         secNeedSetupFirst: 'Set a password and a security question before enabling.',
         secQuestion: 'Security question', secAnswer: 'Security answer', secAnswerHint: 'Used to reset the access password if you forget it. Stored hashed, never shown again.',
         secCustomQuestion: 'Custom question', secSaveQuestion: 'Save security question', secQuestionSet: 'Security question has been set.',
+        secQCurrentHint: 'Enter your current access password to change the security question.', secCurrentRequired: 'Please enter your current access password.',
         secSetupRequired: 'Password and security question must both be set.',
         secCurrentWrong: 'Current password is incorrect.', secMismatch: 'Passwords do not match.', secTooShort: 'Password must be at least 4 characters.',
         secAnswerWrong: 'Security answer is incorrect.', secMinLength: 'At least 4 characters.',
@@ -131,6 +132,7 @@ window.__ModuleLoader__.load({
         secNeedSetupFirst: '请先设置密码和密保问题，再开启此选项。',
         secQuestion: '密保问题', secAnswer: '密保答案', secAnswerHint: '忘记密码时用于重置访问密码。仅保存哈希，不会再次显示。',
         secCustomQuestion: '自定义问题', secSaveQuestion: '保存密保问题', secQuestionSet: '密保问题已设置。',
+        secQCurrentHint: '修改密保问题前请输入当前访问密码。', secCurrentRequired: '请输入当前访问密码。',
         secSetupRequired: '密码和密保问题都必须先设置。',
         secCurrentWrong: '当前密码不正确。', secMismatch: '两次输入的密码不一致。', secTooShort: '密码至少 4 个字符。',
         secAnswerWrong: '密保答案不正确。', secMinLength: '至少 4 个字符。',
@@ -889,6 +891,7 @@ window.__ModuleLoader__.load({
       var q = qState[0], setQ = qState[1];
       var customQState = useState(''), customQ = customQState[0], setCustomQ = customQState[1];
       var answerState = useState(''), answer = answerState[0], setAnswer = answerState[1];
+      var qCurrentState = useState(''), qCurrent = qCurrentState[0], setQCurrent = qCurrentState[1];
       var toastState = useState(''), toast = toastState[0], setToast = toastState[1];
       var updateState = useState(null), updateInfo = updateState[0], setUpdateInfo = updateState[1];
       var checkingState = useState(false), checking = checkingState[0], setChecking = checkingState[1];
@@ -941,12 +944,22 @@ window.__ModuleLoader__.load({
         var chosen = SECURITY_QUESTIONS.filter(function (x) { return x.k === q; })[0] || SECURITY_QUESTIONS[0];
         var label = q === 'custom' ? (customQ || '') : (chosen[lang] || chosen.en);
         if (q === 'custom' && !customQ.trim()) { setToast(t('secQuestion')); return; }
-        hashWithSalt(s.salt || (s.salt = makeSalt()), normalizeAnswer(answer)).then(function (h) {
-          s.question = { k: q, label: label };
-          s.answerHash = h;
-          saveSecurity(s);
-          refresh(); setAnswer(''); setToast(t('secQuestionSet'));
-        });
+        // Once a question is set, changing it must be authorized with the current access password.
+        function commit() {
+          hashWithSalt(s.salt || (s.salt = makeSalt()), normalizeAnswer(answer)).then(function (h) {
+            s.question = { k: q, label: label };
+            s.answerHash = h;
+            saveSecurity(s);
+            refresh(); setAnswer(''); setQCurrent(''); setToast(t('secQuestionSet'));
+          });
+        }
+        if (s.passwordHash && s.question && s.answerHash) {
+          if (!qCurrent) { setToast(t('secCurrentRequired')); return; }
+          verifyPassword(s, qCurrent).then(function (ok) {
+            if (!ok) { setToast(t('secCurrentWrong')); return; }
+            return commit();
+          });
+        } else commit();
       }
       function toggleEnabled() {
         if (!sec.enabled && !hasSetup()) { setToast(t('secNeedSetupFirst')); return; }
@@ -992,6 +1005,7 @@ window.__ModuleLoader__.load({
       }
 
       var questionLabel = sec.question ? (sec.question.label || t('secQuestion')) : null;
+      var qNeedsCurrent = !!(sec.passwordHash && sec.question && sec.answerHash);
       return h('div', { className: 'cv-root' },
         h('style', null, CSS),
         h('div', { className: 'cv-settings' },
@@ -1067,9 +1081,13 @@ window.__ModuleLoader__.load({
           ),
           h('div', { className: 'cv-settings-card' },
             h('h3', null, t('secQuestion')),
-            h('p', { className: 'cv-card-sub' }, t('secAnswerHint')),
+            h('p', { className: 'cv-card-sub' }, qNeedsCurrent ? t('secQCurrentHint') : t('secAnswerHint')),
             questionLabel ? h('div', { className: 'cv-status' }, '✓ ' + t('secQuestionSet') + '：' + questionLabel) : null,
             h('div', { className: 'cv-settings-fields' },
+              qNeedsCurrent ? h('label', { className: 'cv-form-row' },
+                h('span', { className: 'cv-form-label' }, t('secCurrent')),
+                h(SecretInput, { t: t, value: qCurrent, placeholder: t('secCurrent'), onChange: function (ev) { setQCurrent(ev.target.value); } })
+              ) : null,
               h('label', { className: 'cv-form-row' },
                 h('span', { className: 'cv-form-label' }, t('secQuestion')),
                 h('select', { className: 'cv-input', value: q, onChange: function (ev) { setQ(ev.target.value); } },
