@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.9';
+    var VERSION = '1.1.0';
 
     var DICTS = {
       en: {
@@ -267,7 +267,8 @@ window.__ModuleLoader__.load({
       '.cv-search{flex:1;min-width:220px;padding:9px 13px;border-radius:9px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1);font-size:13px;outline:none}',
       '.cv-search:focus{border-color:var(--cv-brand)}',
       '.cv-chips{display:flex;gap:6px;flex-wrap:wrap}',
-      '.cv-chip{padding:7px 12px;border-radius:999px;border:1px solid var(--cv-b1);background:transparent;color:var(--cv-t2);font-size:12.5px;cursor:pointer}',
+      '.cv-chip{padding:7px 12px;border-radius:999px;border:1px solid var(--cv-b1);background:transparent;color:var(--cv-t2);font-size:12.5px;cursor:pointer;transition:background .16s,color .16s,border-color .16s,box-shadow .16s}',
+      '.cv-chip:active{transform:scale(.97)}',
       '.cv-chip:hover{background:var(--cv-l2);color:var(--cv-t1)}',
       '.cv-chip-on{background:var(--cv-brand);border-color:var(--cv-brand);color:var(--cv-bg)}',
       '.cv-chip-on:hover{background:var(--cv-brand);border-color:var(--cv-brand);color:var(--cv-bg);box-shadow:0 2px 8px rgba(0,0,0,.18)}',
@@ -276,10 +277,13 @@ window.__ModuleLoader__.load({
       '.cv-sort-label{color:var(--cv-t2);font-size:12px}',
       '.cv-select{padding:7px 10px;border-radius:8px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1);font-size:12.5px;cursor:pointer;outline:none}',
       '.cv-select:focus{border-color:var(--cv-brand)}',
-      '.cv-btn{padding:9px 16px;border-radius:9px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1);font-size:13px;font-weight:550;cursor:pointer}',
-      '.cv-btn:hover{background:var(--cv-l2);color:var(--cv-t1)}',
+      '.cv-btn{padding:9px 16px;border-radius:9px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1);font-size:13px;font-weight:550;cursor:pointer;transition:background .16s,color .16s,border-color .16s,box-shadow .16s,transform .1s}',
+      '.cv-btn:hover{background:var(--cv-l2);color:var(--cv-t1);border-color:var(--cv-b2)}',
+      '.cv-btn:active{transform:translateY(1px) scale(.98);background:var(--cv-b1)}',
       '.cv-btn-primary{background:var(--cv-brand);border-color:var(--cv-brand);color:var(--cv-bg)}',
       '.cv-btn-primary:hover{background:var(--cv-brand);border-color:var(--cv-brand);color:var(--cv-bg);box-shadow:0 3px 12px rgba(0,0,0,.2)}',
+      '.cv-btn-primary:active{transform:translateY(1px) scale(.98);box-shadow:0 1px 4px rgba(0,0,0,.18)}',
+      '.cv-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}',
       '.cv-io{display:flex;gap:8px;align-items:center}',
       '.cv-import-file{margin:4px 22px 0;padding:10px 12px;border-radius:9px;background:var(--cv-l1);border:1px solid var(--cv-b1);font-size:12.5px;color:var(--cv-t1);overflow-wrap:anywhere}',
       '.cv-import-modes{display:flex;flex-direction:column;gap:10px}',
@@ -288,8 +292,9 @@ window.__ModuleLoader__.load({
       '.cv-import-opt-name{font-size:13px;font-weight:550;color:var(--cv-t1)}',
       '.cv-import-opt-hint{font-size:12px;color:var(--cv-t2);margin-top:3px;line-height:1.45}',
       '.cv-import-warn{color:var(--cv-err);font-weight:550}',
-      '.cv-mini{padding:4px 9px;border-radius:7px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t2);font-size:11.5px;cursor:pointer;white-space:nowrap}',
-      '.cv-mini:hover{color:var(--cv-t1);background:var(--cv-l2)}',
+      '.cv-mini{padding:4px 9px;border-radius:7px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t2);font-size:11.5px;cursor:pointer;white-space:nowrap;transition:background .16s,color .16s,border-color .16s,transform .1s}',
+      '.cv-mini:hover{color:var(--cv-t1);background:var(--cv-l2);border-color:var(--cv-b2)}',
+      '.cv-mini:active{transform:scale(.95);background:var(--cv-b1)}',
       '.cv-count{margin:16px 2px 10px;color:var(--cv-t2);font-size:12.5px}',
       '.cv-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}',
       '.cv-list-scroll{max-height:62vh;min-height:160px;overflow-y:auto;overflow-x:hidden;margin-top:4px;padding-right:6px;scrollbar-width:thin;scrollbar-color:var(--cv-b2) transparent}',
@@ -375,8 +380,9 @@ window.__ModuleLoader__.load({
       // Password generator
       '.cv-gen-secret{display:flex;gap:6px;align-items:stretch}',
       '.cv-gen-secret .cv-input{flex:1;min-width:0}',
-      '.cv-gen-btn{flex:none;padding:0 12px;border:1px solid var(--cv-b1);border-radius:9px;background:var(--cv-l1);color:var(--cv-brand);font-size:12.5px;font-family:inherit;cursor:pointer;white-space:nowrap}',
+      '.cv-gen-btn{flex:none;padding:0 12px;border:1px solid var(--cv-b1);border-radius:9px;background:var(--cv-l1);color:var(--cv-brand);font-size:12.5px;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .16s,border-color .16s,transform .1s}',
       '.cv-gen-btn:hover{background:var(--cv-l2);color:var(--cv-brand)}',
+      '.cv-gen-btn:active{transform:scale(.95);background:var(--cv-b1)}',
       '.cv-gen-preview{margin-top:6px;padding:12px 14px;border-radius:10px;background:var(--cv-l1);border:1px solid var(--cv-b1);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.5px;overflow-wrap:anywhere;user-select:all}',
       '.cv-gen-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}',
       '.cv-gen-check{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--cv-t1);cursor:pointer}',
