@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.1.1';
+    var VERSION = '1.1.2';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -102,6 +102,7 @@ window.__ModuleLoader__.load({
         export: 'Export', import: 'Import',
         exportWarn: 'The backup file contains plaintext passwords and API keys. Keep it safe and delete it when no longer needed. Continue?',
         exportDone: 'Backup downloaded', exportFail: 'Export failed', exportEmpty: 'Nothing to export',
+        exportTitle: 'Export credentials', exportConfirm: 'Export backup',
         importTitle: 'Import credentials', importHint: 'Imported secrets are stored locally, just like the rest of your vault.',
         importFound: 'Entries in file', importMode: 'Import mode',
         importMerge: 'Merge (keep existing, skip duplicates)',
@@ -199,6 +200,7 @@ window.__ModuleLoader__.load({
         export: '导出', import: '导入',
         exportWarn: '备份文件包含明文密码和 API Key，请妥善保管并在不需要时删除。是否继续？',
         exportDone: '备份已下载', exportFail: '导出失败', exportEmpty: '没有可导出的凭据',
+        exportTitle: '导出凭据', exportConfirm: '导出备份',
         importTitle: '导入凭据', importHint: '导入的密钥与保险箱其他数据一样仅保存在本机。',
         importFound: '文件中的条目数', importMode: '导入方式',
         importMerge: '合并（保留现有，跳过重复）',
@@ -270,7 +272,7 @@ window.__ModuleLoader__.load({
     function isMultilineField(f) { return f.type === 'secretarea' || f.type === 'textarea'; }
 
     var CSS = [
-      '.cv-root{--cv-bg:var(--dsw-alias-bg-base,#fff);--cv-l1:var(--dsw-alias-bg-layer-1,#f6f7f9);--cv-l2:var(--dsw-alias-bg-layer-2,#eceef3);--cv-b1:var(--dsw-alias-border-l1,#e2e5eb);--cv-b2:var(--dsw-alias-border-l2,#c9cfd9);--cv-brand:var(--dsw-alias-brand-primary,#2563eb);--cv-t1:var(--dsw-alias-label-primary,#1d2129);--cv-t2:var(--dsw-alias-label-secondary,#6b7280);--cv-err:var(--dsw-alias-state-error-primary,#dc2626);--cv-ok:var(--dsw-alias-state-success-primary,#16a34a);color:var(--cv-t1);background:var(--cv-bg);font-family:inherit;font-size:14px;min-height:100%;box-sizing:border-box}',
+      '.cv-root{--cv-bg:var(--dsw-alias-bg-base,#fff);--cv-l1:var(--dsw-alias-bg-layer-1,#f6f7f9);--cv-l2:var(--dsw-alias-bg-layer-2,#eceef3);--cv-b1:var(--dsw-alias-border-l1,#e2e5eb);--cv-b2:var(--dsw-alias-border-l2,#c9cfd9);--cv-brand:var(--dsw-alias-brand-primary,#2563eb);--cv-t1:var(--dsw-alias-label-primary,#1d2129);--cv-t2:var(--dsw-alias-label-secondary,#6b7280);--cv-err:var(--dsw-alias-state-error-primary,#dc2626);--cv-ok:var(--dsw-alias-state-success-primary,#16a34a);color:var(--cv-t1);background:var(--cv-bg);font-family:inherit;font-size:14px;min-height:100%;box-sizing:border-box;position:relative}',
       '.cv-root *{box-sizing:border-box}',
       '.cv-wrap{max-width:940px;margin:0 auto;padding:28px 26px 60px}',
       '.cv-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}',
@@ -340,8 +342,9 @@ window.__ModuleLoader__.load({
       '.cv-empty-icon{display:inline-flex;color:var(--cv-b2);margin-bottom:12px}',
       '.cv-empty h3{margin:0 0 6px;color:var(--cv-t1);font-size:16px}',
       '.cv-empty p{margin:0;font-size:13px}',
-      '.cv-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}',
-      '.cv-modal{width:100%;max-width:480px;max-height:90vh;overflow:auto;background:var(--cv-bg);border:1px solid var(--cv-b1);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);outline:none}',
+      '.cv-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}',
+      '.cv-modal{width:fit-content;max-width:500px;min-width:320px;max-height:90vh;overflow:auto;background:var(--cv-bg);border:1px solid var(--cv-b1);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);outline:none}',
+      '.cv-modal.cv-modal-editor{min-width:500px;max-width:800px}',
       '.cv-modal-head{padding:18px 22px 0}',
       '.cv-modal-head h2{margin:0;font-size:17px;font-weight:650}',
       '.cv-modal-hint{margin:5px 22px 0;padding:8px 11px;border-radius:8px;background:var(--cv-l1);border:1px solid var(--cv-b1);color:var(--cv-t2);font-size:12px;line-height:1.5}',
@@ -891,7 +894,7 @@ window.__ModuleLoader__.load({
 
       return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
         h('div', {
-          className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t(props.titleKey), tabIndex: -1,
+          className: 'cv-modal cv-modal-editor', role: 'dialog', 'aria-modal': 'true', 'aria-label': t(props.titleKey), tabIndex: -1,
           onKeyDown: function (e) { if (e.key === 'Escape') props.onCancel(); }
         },
           h('div', { className: 'cv-modal-head' }, h('h2', null, t(props.titleKey) + ' · ' + t(meta.label))),
@@ -983,6 +986,24 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cv-modal-foot' },
             h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
             h('button', { className: 'cv-btn cv-btn-primary', onClick: submit }, t('resetSubmit'))
+          )
+        )
+      );
+    }
+
+    function ConfirmModal(props) {
+      var t = props.t;
+      var msg = Array.isArray(props.message)
+        ? props.message.map(function (line, i) { return h('div', { key: i }, line); })
+        : props.message;
+      return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
+        h('div', { className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': props.title, tabIndex: -1,
+          onKeyDown: function (e) { if (e.key === 'Escape') props.onCancel(); } },
+          h('div', { className: 'cv-modal-head' }, h('h2', null, props.title)),
+          h('div', { className: 'cv-modal-hint' }, msg),
+          h('div', { className: 'cv-modal-foot' },
+            h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
+            h('button', { className: 'cv-btn cv-btn-primary', onClick: props.onConfirm }, props.confirmLabel)
           )
         )
       );
@@ -1595,6 +1616,7 @@ window.__ModuleLoader__.load({
       var importState = useState(false), importing = importState[0], setImporting = importState[1];
       var genState = useState(null), genTarget = genState[0], setGenTarget = genState[1];
       var auditState = useState(false), auditing = auditState[0], setAuditing = auditState[1];
+      var confirmState = useState(null), confirmDlg = confirmState[0], setConfirmDlg = confirmState[1];
 
       useEffect(function () {
         var initial = loadEntries();
@@ -1715,8 +1737,13 @@ window.__ModuleLoader__.load({
       }
       function doExport() {
         if (entries.length === 0) { setToast(t('exportEmpty')); return; }
-        if (!window.confirm(t('exportWarn'))) return;
-        setToast(exportBackup(entries) ? t('exportDone') : t('exportFail'));
+        setConfirmDlg({
+          title: t('exportTitle'), message: t('exportWarn'), confirmLabel: t('exportConfirm'),
+          onConfirm: function () {
+            setConfirmDlg(null);
+            setToast(exportBackup(entries) ? t('exportDone') : t('exportFail'));
+          }
+        });
       }
       function doImport(incoming, mode) {
         setEntries(function (prev) {
@@ -1840,6 +1867,10 @@ window.__ModuleLoader__.load({
         genTarget ? h(PasswordGeneratorModal, {
           t: t, onUse: useGeneratedPassword, onCopied: function () { setToast(t('copied')); },
           onCancel: function () { setGenTarget(null); }
+        }) : null,
+        confirmDlg ? h(ConfirmModal, {
+          t: t, title: confirmDlg.title, message: confirmDlg.message, confirmLabel: confirmDlg.confirmLabel,
+          onConfirm: confirmDlg.onConfirm, onCancel: function () { setConfirmDlg(null); }
         }) : null,
         toast ? h('div', { className: 'cv-toast', role: 'status' }, toast) : null
       );
