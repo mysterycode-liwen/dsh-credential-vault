@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.5';
+    var VERSION = '1.0.6';
 
     var DICTS = {
       en: {
@@ -93,7 +93,25 @@ window.__ModuleLoader__.load({
         importMergeHint: 'Existing entries are kept; entries whose ID already exists are skipped.',
         importReplaceWarn: 'All current entries will be removed and replaced by the file contents. This cannot be undone.',
         importConfirm: 'Import', importDone: 'Import complete',
-        importInvalid: 'Invalid backup file', importEmpty: 'No credentials in this file'
+        importInvalid: 'Invalid backup file', importEmpty: 'No credentials in this file',
+        genButton: 'Generate password', genField: 'Generate a password for this field',
+        genTitle: 'Password generator', genHint: 'Generates a strong random password using your browser’s cryptographic random source. Nothing is stored or sent anywhere.',
+        genLength: 'Length', genUpper: 'Uppercase (A–Z)', genLower: 'Lowercase (a–z)', genDigits: 'Digits (0–9)',
+        genSymbols: 'Symbols (!@#…)', genAvoidAmbiguous: 'Avoid ambiguous characters (0/O, 1/l)',
+        genGenerate: 'Generate', genRegenerate: 'Regenerate', genCopy: 'Copy password', genUse: 'Use this password',
+        genError: 'Select at least one character type.', genStrength: 'Strength',
+        genWeak: 'Weak', genFair: 'Fair', genStrong: 'Strong',
+        auditButton: 'Security audit', auditTitle: 'Security audit',
+        auditHint: 'Checks every entry for weak or reused secrets, missing values and expiring keys. The audit runs locally — nothing leaves your device.',
+        auditRun: 'Run audit', auditScanning: 'Scanning…', auditClean: 'No issues found. Your vault looks good.',
+        auditSummary: 'entries scanned', auditIssues: 'issues found',
+        auditWeak: 'Weak password', auditWeakDesc: 'Password is short or too simple.',
+        auditReused: 'Reused secret', auditReusedDesc: 'This secret is also used in another entry.',
+        auditEmpty: 'Missing secret', auditEmptyDesc: 'This entry has no password / key saved.',
+        auditExpired: 'Expired key', auditExpiredDesc: 'The expiry date has passed.',
+        auditExpiring: 'Expiring soon', auditExpiringDesc: 'Expires within 30 days.',
+        auditEdit: 'Edit', auditHigh: 'High', auditMedium: 'Medium', auditLow: 'Low',
+        auditNote: 'Secrets are never shown in the audit — only entry names and issue types.'
       },
       zh: {
         title: '凭据保险箱', subtitle: '集中管理你的账号、密码与 API Key',
@@ -171,7 +189,25 @@ window.__ModuleLoader__.load({
         importMergeHint: '保留现有条目；ID 已存在的条目将被跳过。',
         importReplaceWarn: '当前所有条目将被删除并由文件内容替换，此操作不可撤销。',
         importConfirm: '导入', importDone: '导入完成',
-        importInvalid: '备份文件无效', importEmpty: '文件中没有凭据'
+        importInvalid: '备份文件无效', importEmpty: '文件中没有凭据',
+        genButton: '生成密码', genField: '为此字段生成密码',
+        genTitle: '密码生成器', genHint: '使用浏览器的加密随机源生成高强度随机密码，不会存储或上传任何数据。',
+        genLength: '长度', genUpper: '大写字母 (A–Z)', genLower: '小写字母 (a–z)', genDigits: '数字 (0–9)',
+        genSymbols: '符号 (!@#…)', genAvoidAmbiguous: '排除易混淆字符 (0/O, 1/l)',
+        genGenerate: '生成', genRegenerate: '重新生成', genCopy: '复制密码', genUse: '使用此密码',
+        genError: '请至少选择一种字符类型。', genStrength: '强度',
+        genWeak: '弱', genFair: '中', genStrong: '强',
+        auditButton: '健康审计', auditTitle: '健康审计',
+        auditHint: '检查每条记录的密码/密钥是否过弱、重复、缺失或即将过期。审计在本地进行，不会上传任何数据。',
+        auditRun: '开始审计', auditScanning: '扫描中…', auditClean: '未发现问题，保险箱状态良好。',
+        auditSummary: '条记录已扫描', auditIssues: '个问题',
+        auditWeak: '弱密码', auditWeakDesc: '密码过短或过于简单。',
+        auditReused: '重复使用', auditReusedDesc: '该密钥与另一条记录重复使用。',
+        auditEmpty: '缺少密钥', auditEmptyDesc: '该记录未保存密码 / 密钥。',
+        auditExpired: '已过期', auditExpiredDesc: '到期日期已过。',
+        auditExpiring: '即将过期', auditExpiringDesc: '将在 30 天内过期。',
+        auditEdit: '编辑', auditHigh: '高', auditMedium: '中', auditLow: '低',
+        auditNote: '审计中不会显示密钥明文，只显示记录名称和问题类型。'
       }
     };
 
@@ -333,7 +369,39 @@ window.__ModuleLoader__.load({
       '.cv-switch[aria-checked="true"] .cv-switch-knob{transform:translateX(19px)}',
       '.cv-status{margin-top:12px;font-size:12.5px;color:var(--cv-ok)}',
       '.cv-field-error{color:var(--cv-err);font-size:12px;margin-top:2px}',
-      '.cv-settings-fields{display:flex;flex-direction:column;gap:12px;margin-top:12px}'
+      '.cv-settings-fields{display:flex;flex-direction:column;gap:12px;margin-top:12px}',
+      // Password generator
+      '.cv-gen-secret{display:flex;gap:6px;align-items:stretch}',
+      '.cv-gen-secret .cv-input{flex:1;min-width:0}',
+      '.cv-gen-btn{flex:none;padding:0 12px;border:1px solid var(--cv-b1);border-radius:9px;background:var(--cv-l1);color:var(--cv-brand);font-size:12.5px;font-family:inherit;cursor:pointer;white-space:nowrap}',
+      '.cv-gen-btn:hover{background:var(--cv-l2);color:var(--cv-brand)}',
+      '.cv-gen-preview{margin-top:6px;padding:12px 14px;border-radius:10px;background:var(--cv-l1);border:1px solid var(--cv-b1);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.5px;overflow-wrap:anywhere;user-select:all}',
+      '.cv-gen-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}',
+      '.cv-gen-check{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--cv-t1);cursor:pointer}',
+      '.cv-gen-check input{accent-color:var(--cv-brand);margin:0}',
+      '.cv-gen-strength{font-weight:650}',
+      '.cv-gen-strength.cv-weak{color:var(--cv-err)}',
+      '.cv-gen-strength.cv-fair{color:#b45309}',
+      '.cv-gen-strength.cv-strong{color:var(--cv-ok)}',
+      '.cv-gen-bar{height:5px;border-radius:4px;background:var(--cv-l2);margin-top:5px;overflow:hidden}',
+      '.cv-gen-bar span{display:block;height:100%;border-radius:4px;transition:width .2s}',
+      '.cv-gen-bar .cv-weak{background:var(--cv-err)}',
+      '.cv-gen-bar .cv-fair{background:#b45309}',
+      '.cv-gen-bar .cv-strong{background:var(--cv-ok)}',
+      // Security audit
+      '.cv-audit-summary{display:flex;gap:18px;flex-wrap:wrap;padding:12px 14px;border-radius:10px;background:var(--cv-l1);border:1px solid var(--cv-b1);font-size:13px}',
+      '.cv-audit-summary b{font-size:16px;color:var(--cv-t1)}',
+      '.cv-audit-clean{padding:20px;text-align:center;color:var(--cv-ok);font-size:13.5px;font-weight:550}',
+      '.cv-audit-list{margin-top:6px;display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;scrollbar-width:thin}',
+      '.cv-audit-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--cv-b1);border-radius:9px;background:var(--cv-l1)}',
+      '.cv-audit-sev{flex:none;font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:6px;white-space:nowrap;align-self:center}',
+      '.cv-audit-sev.cv-high{background:var(--cv-err);color:#fff}',
+      '.cv-audit-sev.cv-medium{background:#b45309;color:#fff}',
+      '.cv-audit-sev.cv-low{background:var(--cv-brand);color:#fff}',
+      '.cv-audit-body{flex:1;min-width:0}',
+      '.cv-audit-name{font-size:13px;font-weight:600;color:var(--cv-t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.cv-audit-desc{font-size:12px;color:var(--cv-t2);margin-top:2px;line-height:1.4}',
+      '.cv-audit-note{margin:12px 22px 0;font-size:11.5px;color:var(--cv-t2);line-height:1.5}'
     ].join('\n');
 
     // Migrate entries saved by the earlier single-form version.
@@ -389,6 +457,111 @@ window.__ModuleLoader__.load({
     }
     function uid() {
       return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    }
+
+    // ---- Password generator ---------------------------------------------
+    var GEN_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    var GEN_LOWER = 'abcdefghijklmnopqrstuvwxyz';
+    var GEN_DIGITS = '0123456789';
+    var GEN_SYMBOLS = '!@#$%^&*()-_=+[]{};:,.?/';
+    var GEN_AMBIGUOUS = '0O1lI|`\'\";:';
+    // Uniform random integer in [0, max) using rejection sampling, so every
+    // character is equally likely (no modulo bias).
+    function secureRandomInt(max) {
+      var crypto = (typeof window !== 'undefined' && window.crypto) || (typeof globalThis !== 'undefined' && globalThis.crypto);
+      if (!crypto || !crypto.getRandomValues) throw new Error('no-crypto');
+      var limit = Math.floor(4294967296 / max) * max; // 2^32 rounded down to a multiple of max
+      var buf = new Uint32Array(1);
+      var v;
+      do { crypto.getRandomValues(buf); v = buf[0]; } while (v >= limit);
+      return v % max;
+    }
+    function shuffleChars(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = secureRandomInt(i + 1);
+        var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+      }
+      return arr;
+    }
+    // opts: {length, upper, lower, digits, symbols, avoidAmbiguous}
+    function generatePassword(opts) {
+      var sets = [];
+      if (opts.upper) sets.push(GEN_UPPER);
+      if (opts.lower) sets.push(GEN_LOWER);
+      if (opts.digits) sets.push(GEN_DIGITS);
+      if (opts.symbols) sets.push(GEN_SYMBOLS);
+      if (sets.length === 0) return null;
+      var pool = sets.join('');
+      if (opts.avoidAmbiguous) {
+        pool = pool.split('').filter(function (c) { return GEN_AMBIGUOUS.indexOf(c) === -1; }).join('');
+      }
+      if (!pool) return null;
+      var len = Math.max(4, Math.min(128, Number(opts.length) || 16));
+      var out = [];
+      // Guarantee at least one character from every selected class.
+      sets.forEach(function (set) {
+        var s = opts.avoidAmbiguous ? set.split('').filter(function (c) { return GEN_AMBIGUOUS.indexOf(c) === -1; }).join('') : set;
+        if (s) out.push(s[secureRandomInt(s.length)]);
+      });
+      while (out.length < len) out.push(pool[secureRandomInt(pool.length)]);
+      return shuffleChars(out.slice(0, len)).join('');
+    }
+    // Entropy estimate in bits -> strength tier.
+    function passwordStrength(pw) {
+      if (!pw) return { tier: 'weak', bits: 0 };
+      var pool = 0;
+      if (/[a-z]/.test(pw)) pool += 26;
+      if (/[A-Z]/.test(pw)) pool += 26;
+      if (/[0-9]/.test(pw)) pool += 10;
+      if (/[^A-Za-z0-9]/.test(pw)) pool += 28;
+      if (!pool) pool = 10;
+      var bits = Math.round(pw.length * (Math.log(pool) / Math.LN2));
+      var tier = bits < 45 ? 'weak' : (bits < 65 ? 'fair' : 'strong');
+      return { tier: tier, bits: bits };
+    }
+
+    // ---- Security audit --------------------------------------------------
+    function secretOf(e) {
+      var cat = e.category || 'account';
+      if (cat === 'apikey') return String(e.apiKey || '');
+      if (cat === 'other') return String(e.content || '');
+      return String(e.password || '');
+    }
+    function runAudit(entries) {
+      var issues = [];
+      var bySecret = {};
+      // Count reuse of non-empty secrets across entries.
+      entries.forEach(function (e) {
+        var s = secretOf(e);
+        if (!s) return;
+        (bySecret[s] = bySecret[s] || []).push(e.id);
+      });
+      var now = Date.now();
+      var DAY = 24 * 60 * 60 * 1000;
+      entries.forEach(function (e) {
+        var cat = e.category || 'account';
+        var s = secretOf(e);
+        var name = e.title || '—';
+        function add(kind, sev) {
+          issues.push({ id: e.id, name: name, category: cat, kind: kind, severity: sev });
+        }
+        if (!s) { add('auditEmpty', 'high'); return; }
+        // Weak: short, or only a single character class with length < 12.
+        if (s.length < 8 || passwordStrength(s).tier === 'weak') add('auditWeak', s.length < 6 ? 'high' : 'medium');
+        // Reused secret (appears in more than one distinct entry).
+        if (bySecret[s] && bySecret[s].length > 1) add('auditReused', 'high');
+        // Expiry checks for API keys.
+        if (e.expiry) {
+          var t = Date.parse(e.expiry);
+          if (!isNaN(t)) {
+            if (t < now) add('auditExpired', 'medium');
+            else if (t - now < 30 * DAY) add('auditExpiring', 'low');
+          }
+        }
+      });
+      var order = { high: 0, medium: 1, low: 2 };
+      issues.sort(function (a, b) { return order[a.severity] - order[b.severity]; });
+      return { scanned: entries.length, issues: issues };
     }
 
     // ---- Backup: export / import ----------------------------------------
@@ -595,6 +768,12 @@ window.__ModuleLoader__.load({
     }
 
     function looksLikeUrl(v) { return /^https?:\/\//i.test(String(v || '').trim()); }
+    function copyToClipboard(text) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(String(text));
+      } catch (e) {}
+      return Promise.reject(new Error('no-clipboard'));
+    }
 
     function Field(props) {
       var t = props.t;
@@ -667,6 +846,7 @@ window.__ModuleLoader__.load({
         } else if (f.type === 'secret') {
           control = h('div', { className: 'cv-secret-input' },
             h('input', baseInput(f, { type: showSecret ? 'text' : 'password' })),
+            typeof props.onGenerate === 'function' ? h('button', { type: 'button', className: 'cv-gen-btn', title: t('genField'), onClick: function () { props.onGenerate(f.key); } }, '⚙ ' + t('genButton')) : null,
             h('button', { type: 'button', className: 'cv-secret-toggle', onClick: function () { setShowSecret(!showSecret); } }, showSecret ? t('hide') : t('show'))
           );
         } else if (f.type === 'secretarea') {
@@ -675,6 +855,7 @@ window.__ModuleLoader__.load({
               className: 'cv-input cv-textarea cv-mono' + (showSecret ? '' : ' cv-text-security'),
               spellCheck: false
             })),
+            typeof props.onGenerate === 'function' ? h('button', { type: 'button', className: 'cv-gen-btn', title: t('genField'), onClick: function () { props.onGenerate(f.key); } }, '⚙ ' + t('genButton')) : null,
             h('button', { type: 'button', className: 'cv-secret-toggle', onClick: function () { setShowSecret(!showSecret); } }, showSecret ? t('hide') : t('show'))
           );
         }
@@ -1252,6 +1433,114 @@ window.__ModuleLoader__.load({
       return h('span', { style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, color: 'var(--dsw-alias-label-primary, #1d2129)' } }, Shield(18));
     }
 
+    // ---- Password generator modal ---------------------------------------
+    function PasswordGeneratorModal(props) {
+      var t = props.t;
+      var lenState = useState(16), length = lenState[0], setLength = lenState[1];
+      var upperState = useState(true), upper = upperState[0], setUpper = upperState[1];
+      var lowerState = useState(true), lower = lowerState[0], setLower = lowerState[1];
+      var digitsState = useState(true), digits = digitsState[0], setDigits = digitsState[1];
+      var symbolsState = useState(true), symbols = symbolsState[0], setSymbols = symbolsState[1];
+      var avoidState = useState(true), avoid = avoidState[0], setAvoid = avoidState[1];
+      var valueState = useState(''), value = valueState[0], setValue = valueState[1];
+      var errState = useState(''), err = errState[0], setErr = errState[1];
+
+      function regen() {
+        var pw = generatePassword({ length: length, upper: upper, lower: lower, digits: digits, symbols: symbols, avoidAmbiguous: avoid });
+        if (!pw) { setErr(t('genError')); setValue(''); return; }
+        setErr(''); setValue(pw);
+      }
+      function doUse() {
+        if (!value) { regen(); return; }
+        props.onUse(value);
+      }
+      var strength = value ? passwordStrength(value) : null;
+      var strengthLabel = strength ? (strength.tier === 'strong' ? t('genStrong') : strength.tier === 'fair' ? t('genFair') : t('genWeak')) : '';
+      return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
+        h('div', { className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('genTitle'), tabIndex: -1,
+          onKeyDown: function (e) { if (e.key === 'Escape') props.onCancel(); } },
+          h('div', { className: 'cv-modal-head' }, h('h2', null, t('genTitle'))),
+          h('div', { className: 'cv-modal-hint' }, t('genHint')),
+          h('div', { className: 'cv-modal-body' },
+            h('label', { className: 'cv-form-row' },
+              h('span', { className: 'cv-form-label' }, t('genLength') + '：' + length),
+              h('input', { className: 'cv-input', type: 'range', min: 4, max: 64, value: length,
+                onChange: function (ev) { setLength(Number(ev.target.value)); } })
+            ),
+            h('div', { className: 'cv-gen-opts' },
+              h('label', { className: 'cv-gen-check' }, h('input', { type: 'checkbox', checked: upper, onChange: function (ev) { setUpper(ev.target.checked); } }), t('genUpper')),
+              h('label', { className: 'cv-gen-check' }, h('input', { type: 'checkbox', checked: lower, onChange: function (ev) { setLower(ev.target.checked); } }), t('genLower')),
+              h('label', { className: 'cv-gen-check' }, h('input', { type: 'checkbox', checked: digits, onChange: function (ev) { setDigits(ev.target.checked); } }), t('genDigits')),
+              h('label', { className: 'cv-gen-check' }, h('input', { type: 'checkbox', checked: symbols, onChange: function (ev) { setSymbols(ev.target.checked); } }), t('genSymbols')),
+              h('label', { className: 'cv-gen-check', style: { gridColumn: '1 / -1' } }, h('input', { type: 'checkbox', checked: avoid, onChange: function (ev) { setAvoid(ev.target.checked); } }), t('genAvoidAmbiguous'))
+            ),
+            value ? h('div', null,
+              h('div', { className: 'cv-gen-preview' }, value),
+              h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 } },
+                h('span', { className: 'cv-form-label' }, t('genStrength') + '：'),
+                h('span', { className: 'cv-gen-strength cv-' + strength.tier }, strengthLabel + ' (' + strength.bits + ' bit)')
+              ),
+              h('div', { className: 'cv-gen-bar' }, h('span', { className: strength.tier, style: { width: (strength.bits < 45 ? 33 : strength.bits < 65 ? 66 : 100) + '%' } }))
+            ) : null,
+            err ? h('div', { className: 'cv-field-error', role: 'alert' }, err) : null
+          ),
+          h('div', { className: 'cv-modal-foot' },
+            h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
+            value ? h('button', { className: 'cv-btn', onClick: function () { copyToClipboard(value).then(function () { if (props.onCopied) props.onCopied(); }).catch(function () {}); } }, t('genCopy')) : null,
+            value ? h('button', { className: 'cv-btn', onClick: regen }, t('genRegenerate')) : null,
+            h('button', { className: 'cv-btn cv-btn-primary', onClick: doUse }, value ? t('genUse') : t('genGenerate'))
+          )
+        )
+      );
+    }
+
+    // ---- Security audit modal -------------------------------------------
+    function AuditModal(props) {
+      var t = props.t;
+      var resultState = useState(null), result = resultState[0], setResult = resultState[1];
+      var scanningState = useState(false), scanning = scanningState[0], setScanning = scanningState[1];
+      function run() {
+        setScanning(true);
+        // Defer so the "Scanning…" label paints before the (synchronous) scan.
+        setTimeout(function () {
+          setResult(runAudit(props.entries));
+          setScanning(false);
+        }, 30);
+      }
+      function sevLabel(s) { return s === 'high' ? t('auditHigh') : s === 'medium' ? t('auditMedium') : t('auditLow'); }
+      return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
+        h('div', { className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('auditTitle'), tabIndex: -1,
+          onKeyDown: function (e) { if (e.key === 'Escape') props.onCancel(); } },
+          h('div', { className: 'cv-modal-head' }, h('h2', null, t('auditTitle'))),
+          h('div', { className: 'cv-modal-hint' }, t('auditHint')),
+          h('div', { className: 'cv-modal-body' },
+            result ? h('div', { className: 'cv-audit-summary' },
+              h('span', null, h('b', null, result.scanned) + ' ' + t('auditSummary')),
+              h('span', null, h('b', null, result.issues.length) + ' ' + t('auditIssues'))
+            ) : null,
+            result && result.issues.length === 0 ? h('div', { className: 'cv-audit-clean' }, '✓ ' + t('auditClean')) : null,
+            result && result.issues.length > 0 ? h('div', { className: 'cv-audit-list' },
+              result.issues.map(function (issue, i) {
+                return h('div', { className: 'cv-audit-item', key: i },
+                  h('span', { className: 'cv-audit-sev cv-' + issue.severity }, sevLabel(issue.severity)),
+                  h('div', { className: 'cv-audit-body' },
+                    h('div', { className: 'cv-audit-name' }, issue.name),
+                    h('div', { className: 'cv-audit-desc' }, t(issue.kind) + ' — ' + t(issue.kind + 'Desc'))
+                  ),
+                  h('button', { className: 'cv-mini', onClick: function () { props.onEdit(issue.id); } }, t('auditEdit'))
+                );
+              })
+            ) : null,
+            result ? h('p', { className: 'cv-audit-note' }, 'ⓘ ', t('auditNote')) : null
+          ),
+          h('div', { className: 'cv-modal-foot' },
+            h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
+            h('button', { className: 'cv-btn cv-btn-primary', disabled: scanning, onClick: run }, scanning ? t('auditScanning') : (result ? t('auditRun') : t('auditRun')))
+          )
+        )
+      );
+    }
+
     function VaultPanel() {
       var langState = useState(function () { return detectLang(locale); });
       var lang = langState[0], setLang = langState[1];
@@ -1267,6 +1556,8 @@ window.__ModuleLoader__.load({
       var toastState = useState(''), toast = toastState[0], setToast = toastState[1];
       var secRevState = useState(0), secRev = secRevState[0], setSecRev = secRevState[1];
       var importState = useState(false), importing = importState[0], setImporting = importState[1];
+      var genState = useState(null), genTarget = genState[0], setGenTarget = genState[1];
+      var auditState = useState(false), auditing = auditState[0], setAuditing = auditState[1];
 
       useEffect(function () {
         var initial = loadEntries();
@@ -1407,6 +1698,16 @@ window.__ModuleLoader__.load({
         setImporting(false);
         setToast(t('importDone'));
       }
+      function useGeneratedPassword(pw) {
+        if (genTarget && genTarget.field) setDraftField(genTarget.field, pw);
+        setGenTarget(null);
+        setToast(t('copied'));
+      }
+      function auditEditEntry(id) {
+        var e = entries.filter(function (x) { return x.id === id; })[0];
+        setAuditing(false);
+        if (e) openEdit(e);
+      }
 
       var q = String(query).trim().toLowerCase();
       var list = entries.filter(function (e) {
@@ -1442,6 +1743,7 @@ window.__ModuleLoader__.load({
               )
             ),
             h('div', { className: 'cv-io' },
+              h('button', { className: 'cv-btn', onClick: function () { setAuditing(true); } }, '🛡 ' + t('auditButton')),
               h('button', { className: 'cv-btn', onClick: doExport }, t('export')),
               h('button', { className: 'cv-btn', onClick: function () { setImporting(true); } }, t('import')),
               h('button', { className: 'cv-btn cv-btn-primary', onClick: openNew }, '+ ' + t('add'))
@@ -1489,10 +1791,18 @@ window.__ModuleLoader__.load({
         ),
         editing ? h(EditorModal, {
           t: t, draft: editing.draft, titleKey: editing.mode === 'new' ? 'editorNew' : 'editorEdit',
-          onChange: setDraftField, onSave: saveDraft, onCancel: function () { setEditing(null); }
+          onChange: setDraftField, onSave: saveDraft, onCancel: function () { setEditing(null); },
+          onGenerate: function (field) { setGenTarget({ field: field }); }
         }) : null,
         importing ? h(ImportModal, {
           t: t, onImport: doImport, onCancel: function () { setImporting(false); }
+        }) : null,
+        auditing ? h(AuditModal, {
+          t: t, entries: entries, onEdit: auditEditEntry, onCancel: function () { setAuditing(false); }
+        }) : null,
+        genTarget ? h(PasswordGeneratorModal, {
+          t: t, onUse: useGeneratedPassword, onCopied: function () { setToast(t('copied')); },
+          onCancel: function () { setGenTarget(null); }
         }) : null,
         toast ? h('div', { className: 'cv-toast', role: 'status' }, toast) : null
       );
