@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.1.3';
+    var VERSION = '1.1.4';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -99,6 +99,7 @@ window.__ModuleLoader__.load({
         upgradeConfirm: 'Upgrade with dshmarket? It uses the same plugin manager that installed this plugin. DeepSeek Harness may need a restart afterwards.',
         upgradeStarted: 'Upgrade started…', upgradePolling: 'Installing…', upgradeNoMarket: 'The plugin market (dshmarket) is not available here. Please update via the way you installed this plugin.',
         upgradeSuccess: 'Upgrade installed.', upgradeRestart: 'Restart DeepSeek Harness to finish.', upgradeFail: 'Upgrade failed: ',
+        upgradeTitle: 'Confirm upgrade', upgradeGo: 'Upgrade',
         export: 'Export', import: 'Import',
         exportWarn: 'The backup file contains plaintext passwords and API keys. Keep it safe and delete it when no longer needed. Continue?',
         exportDone: 'Backup downloaded', exportFail: 'Export failed', exportEmpty: 'Nothing to export',
@@ -197,6 +198,7 @@ window.__ModuleLoader__.load({
         upgradeConfirm: '使用 dshmarket 升级？它会调用当初安装本插件的同一个插件管理器，升级后可能需要重启 DeepSeek Harness。',
         upgradeStarted: '已开始升级…', upgradePolling: '正在安装…', upgradeNoMarket: '当前不可用插件市场（dshmarket），请通过当初安装本插件的方式进行更新。',
         upgradeSuccess: '升级已安装。', upgradeRestart: '请重启 DeepSeek Harness 以完成升级。', upgradeFail: '升级失败：',
+        upgradeTitle: '确认升级', upgradeGo: '立即升级',
         export: '导出', import: '导入',
         exportWarn: '备份文件包含明文密码和 API Key，请妥善保管并在不需要时删除。是否继续？',
         exportDone: '备份已下载', exportFail: '导出失败', exportEmpty: '没有可导出的凭据',
@@ -373,7 +375,7 @@ window.__ModuleLoader__.load({
       '.cv-link{background:none;border:none;padding:0;color:var(--cv-brand);font-size:12.5px;cursor:pointer;text-decoration:underline;font-family:inherit}',
       '.cv-link:hover{opacity:.8}',
       '.cv-lock-foot{margin-top:16px;color:var(--cv-t2);font-size:11px;line-height:1.5}',
-      '.cv-settings{max-width:820px;margin:0 auto;padding:28px 26px 60px}',
+      '.cv-settings{max-width:820px;margin:0 auto;padding:28px 26px 60px;position:relative}',
       '.cv-settings-head{margin-bottom:8px}',
       '.cv-settings-head h2{margin:0;font-size:18px;font-weight:650}',
       '.cv-settings-head p{margin:5px 0 0;color:var(--cv-t2);font-size:13px;line-height:1.5}',
@@ -1144,6 +1146,7 @@ window.__ModuleLoader__.load({
       var checkingState = useState(false), checking = checkingState[0], setChecking = checkingState[1];
       var upgradingState = useState(false), upgrading = upgradingState[0], setUpgrading = upgradingState[1];
       var upgradeMsgState = useState(null), upgradeMsg = upgradeMsgState[0], setUpgradeMsg = upgradeMsgState[1];
+      var upgradeConfirmState = useState(null), upgradeConfirmDlg = upgradeConfirmState[0], setUpgradeConfirmDlg = upgradeConfirmState[1];
       var pollRef = useRef(null);
       useEffect(function () {
         if (!toast) return;
@@ -1219,7 +1222,13 @@ window.__ModuleLoader__.load({
 
       function startUpgrade() {
         if (upgrading) return;
-        if (!window.confirm(t('upgradeConfirm'))) return;
+        setUpgradeConfirmDlg({
+          title: t('upgradeTitle'), message: t('upgradeConfirm'), confirmLabel: t('upgradeGo'),
+          onConfirm: function () { setUpgradeConfirmDlg(null); runUpgrade(); }
+        });
+      }
+
+      function runUpgrade() {
         setUpgrading(true);
         setUpgradeMsg({ kind: '', text: t('upgradeCheckMarket') });
         // Discover the market API and feature-detect the mutation endpoint.
@@ -1473,6 +1482,10 @@ window.__ModuleLoader__.load({
               : null,
             upgradeMsg ? h('div', { className: 'cv-upgrade-status' + (upgradeMsg.kind === 'ok' ? ' cv-ok' : upgradeMsg.kind === 'err' ? ' cv-err' : ''), role: 'status' }, upgradeMsg.text) : null
           ),
+          upgradeConfirmDlg ? h(ConfirmModal, {
+            t: t, title: upgradeConfirmDlg.title, message: upgradeConfirmDlg.message, confirmLabel: upgradeConfirmDlg.confirmLabel,
+            onConfirm: upgradeConfirmDlg.onConfirm, onCancel: function () { setUpgradeConfirmDlg(null); }
+          }) : null,
           toast ? h('div', { className: 'cv-toast', role: 'status' }, toast) : null
         )
       );
