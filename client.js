@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.0.3';
+    var VERSION = '1.0.4';
 
     var DICTS = {
       en: {
@@ -24,7 +24,8 @@ window.__ModuleLoader__.load({
         search: 'Search name, account, URL or notes…',
         filterAll: 'All', filterAccount: 'Accounts', filterApikey: 'API keys', filterOther: 'Other',
         localNotice: 'Stored locally in this browser (localStorage) on this device. Not synced or encrypted — avoid shared / public browsers.',
-        show: 'Show', hide: 'Hide', copy: 'Copy', copied: 'Copied to clipboard', copyFail: 'Copy failed — select the text manually',
+        show: 'Show', hide: 'Hide', copy: 'Copy', visit: 'Visit', copied: 'Copied to clipboard', copyFail: 'Copy failed — select the text manually',
+        visitFail: 'Could not open the browser. Check the URL and try again.',
         edit: 'Edit', delete: 'Delete',
         emptyTitle: 'No credentials yet', emptyText: 'Click “Add” to save your first account, password or API key.',
         emptyFiltered: 'No matches',
@@ -100,7 +101,8 @@ window.__ModuleLoader__.load({
         search: '搜索名称、账号、网址或备注…',
         filterAll: '全部', filterAccount: '账号密码', filterApikey: 'API Key', filterOther: '其他',
         localNotice: '数据仅保存在本机浏览器的 localStorage 中，不跨设备同步、不加密，请避免在公用/共享浏览器使用。',
-        show: '显示', hide: '隐藏', copy: '复制', copied: '已复制到剪贴板', copyFail: '复制失败，请手动选择文本',
+        show: '显示', hide: '隐藏', copy: '复制', visit: '访问', copied: '已复制到剪贴板', copyFail: '复制失败，请手动选择文本',
+        visitFail: '无法打开浏览器，请检查网址后重试。',
         edit: '编辑', delete: '删除',
         emptyTitle: '还没有凭据', emptyText: '点击「新增」保存第一条账号、密码或 API Key。',
         emptyFiltered: '没有匹配项',
@@ -179,14 +181,14 @@ window.__ModuleLoader__.load({
         { key: 'title', label: 'fTitle', ph: 'fTitlePh', type: 'text', required: true },
         { key: 'username', label: 'fAccount', ph: 'fAccountPh', type: 'text', mono: true },
         { key: 'password', label: 'fPassword', ph: 'fPasswordPh', type: 'secret', mono: true },
-        { key: 'url', label: 'fUrl', ph: 'fUrlPh', type: 'text' },
+        { key: 'url', label: 'fUrl', ph: 'fUrlPh', type: 'text', isUrl: true },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
       apikey: [
         { key: 'title', label: 'fTitle', ph: 'fTitlePhApikey', type: 'text', required: true },
         { key: 'provider', label: 'fProvider', ph: 'fProviderPh', type: 'text' },
         { key: 'apiKey', label: 'fApiKey', ph: 'fApiKeyPh', type: 'secret', mono: true },
-        { key: 'endpoint', label: 'fEndpoint', ph: 'fEndpointPh', type: 'text', mono: true },
+        { key: 'endpoint', label: 'fEndpoint', ph: 'fEndpointPh', type: 'text', mono: true, isUrl: true },
         { key: 'expiry', label: 'fExpiry', type: 'date' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
@@ -564,6 +566,7 @@ window.__ModuleLoader__.load({
     }
 
     var layout = null, locale = null, lang0 = 'en';
+    var sidebarRight = null, ctxRef = null;
     function tr(k) { return (DICTS[lang0] && DICTS[lang0][k]) || DICTS.en[k] || k; }
 
     function Shield(size) {
@@ -589,12 +592,15 @@ window.__ModuleLoader__.load({
       }, Shield(20));
     }
 
+    function looksLikeUrl(v) { return /^https?:\/\//i.test(String(v || '').trim()); }
+
     function Field(props) {
       var t = props.t;
       var isSecret = !!props.secret;
       var revealed = !!props.revealed;
       var display = (isSecret && !revealed) ? MASK : (props.value || '');
       var masked = isSecret && !revealed;
+      var visitable = !!props.isUrl && looksLikeUrl(props.value);
       return h('div', { className: 'cv-field' },
         h('div', { className: 'cv-field-label' }, t(props.label)),
         h('div', { className: 'cv-field-row' },
@@ -602,6 +608,7 @@ window.__ModuleLoader__.load({
             className: 'cv-field-value' + (props.mono ? ' cv-mono' : '') + (masked ? ' cv-masked' : '') + (props.multiline ? ' cv-field-multiline' : ''),
             title: masked ? '' : (props.value || '')
           }, display || '—'),
+          visitable ? h('button', { className: 'cv-mini', onClick: function () { props.onVisit(props.value); }, title: t('visit') }, t('visit')) : null,
           isSecret ? h('button', { className: 'cv-mini', onClick: props.onToggle, title: revealed ? t('hide') : t('show') }, revealed ? t('hide') : t('show')) : null,
           props.value ? h('button', { className: 'cv-mini', onClick: function () { props.onCopy(props.value); }, title: t('copy') }, t('copy')) : null
         )
@@ -626,8 +633,8 @@ window.__ModuleLoader__.load({
             if (!e[f.key]) return null;
             return h(Field, {
               key: f.key, t: t, label: f.label, value: e[f.key],
-              mono: !!f.mono, secret: isSecretField(f), multiline: isMultilineField(f),
-              revealed: !!props.revealed, onToggle: props.onToggle, onCopy: props.onCopy
+              mono: !!f.mono, secret: isSecretField(f), multiline: isMultilineField(f), isUrl: !!f.isUrl,
+              revealed: !!props.revealed, onToggle: props.onToggle, onCopy: props.onCopy, onVisit: props.onVisit
             });
           })
         )
@@ -1310,6 +1317,21 @@ window.__ModuleLoader__.load({
           } else { setToast(t('copyFail')); }
         } catch (e) { setToast(t('copyFail')); }
       }
+      function visitUrl(url) {
+        var target = String(url || '').trim();
+        if (!looksLikeUrl(target)) { setToast(t('visitFail')); return; }
+        var sr = sidebarRight || (typeof ctxRef !== 'undefined' && ctxRef && ctxRef.get ? ctxRef.get('sidebarRight') : null);
+        try {
+          if (sr && typeof sr.openTab === 'function') {
+            sr.openTab('browser', { params: { url: target } });
+            return;
+          }
+        } catch (e) {}
+        try {
+          var w = window.open(target, '_blank', 'noopener,noreferrer');
+          if (!w) setToast(t('visitFail'));
+        } catch (e) { setToast(t('visitFail')); }
+      }
       function toggleReveal(id) {
         setRevealed(function (prev) { var n = Object.assign({}, prev); n[id] = !n[id]; return n; });
       }
@@ -1443,7 +1465,8 @@ window.__ModuleLoader__.load({
                       onToggle: function () { toggleReveal(e.id); },
                       onEdit: function () { openEdit(e); },
                       onDelete: function () { delEntry(e.id); },
-                      onCopy: copyText
+                      onCopy: copyText,
+                      onVisit: visitUrl
                     });
                   })
             )
@@ -1463,8 +1486,10 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
+        ctxRef = ctx;
         layout = (ctx.get && ctx.get('layout')) || null;
         locale = (ctx.get && ctx.get('locale')) || null;
+        sidebarRight = (ctx.get && ctx.get('sidebarRight')) || null;
         lang0 = detectLang(locale);
         if (locale && typeof locale.register === 'function') {
           try { locale.register('@local/credential-vault/ui', { en: DICTS.en, zh: DICTS.zh }); } catch (e) {}
