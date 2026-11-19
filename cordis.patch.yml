@@ -1,3 +1,3 @@
 - insert:
-    - id: credential-vault
+    - id: dsh-credential-vault
       name: 'dsh-credential-vault'
