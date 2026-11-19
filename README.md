@@ -10,7 +10,7 @@ A sidebar plugin for DeepSeek Harness that keeps accounts, passwords, API keys a
 dsh plugin --profile desktop add github:mysterycode-liwen/dsh-credential-vault
 ```
 
-或在 DeepSeek Harness 的「设置 → 插件 → 插件市场」中搜索 `credential-vault`。
+或在 DeepSeek Harness 的「设置 → 插件 → 插件市场」中搜索 `dsh-credential-vault`。
 
 ## 功能 / Features
 
@@ -25,13 +25,13 @@ dsh plugin --profile desktop add github:mysterycode-liwen/dsh-credential-vault
 - 登录网址 / Base URL 字段旁提供「访问」按钮，默认用 DeepSeek Harness 内置浏览器打开。
 - 导入 / 导出：把全部凭据导出为 JSON 备份文件，或从备份文件恢复；导入时可选「合并（跳过重复 ID）」或「替换全部」。
 - 设置页：访问密码开关、设置 / 修改密码、密保问题重置、闲置自动锁定（可开关、可选时长）、插件版本与检查更新。
-- Agent 工具 `credential_vault_read`：`mode=summary|full`、`limit`、`offset`、`query`、`category`、`revealSecrets`，默认脱敏。Host 端把浏览器同步过来的快照写到 `~/.dsh/credential-vault/vault.json`。
+- Agent 工具 `dsh_credential_vault_read`：`mode=summary|full`、`limit`、`offset`、`query`、`category`、`revealSecrets`，默认脱敏。Host 端把浏览器同步过来的快照写到 `~/.dsh/dsh-credential-vault/vault.json`（旧版路径 `~/.dsh/credential-vault/vault.json` 会自动迁移）。
 
 ## 安全说明 / Security notice
 
 - 浏览器端数据保存在 **localStorage**，Host 端镜像文件是**明文 JSON**：都不加密、不跨设备同步。请勿在公用 / 共享电脑上使用。
 - 插件没有网络上传行为；数据只在你本机和本机 Harness 之间流转。
-- `credential_vault_read` 默认把 `password` / `apiKey` / `content` 显示为 `••••••••`，只有显式传 `revealSecrets: true` 才返回明文。
+- `dsh_credential_vault_read` 默认把 `password` / `apiKey` / `content` 显示为 `••••••••`，只有显式传 `revealSecrets: true` 才返回明文。
 - **导出的备份文件包含明文密码 / API Key**：请像对待密码本身一样妥善保管，用完及时删除；导入仅在本机浏览器内进行。
 - Host 工具的注册发生在 Harness 启动时：首次安装后请**重启 Harness 或在插件管理里关闭再启用**该插件。
 
