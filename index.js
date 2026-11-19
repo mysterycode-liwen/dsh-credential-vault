@@ -1,16 +1,16 @@
 /**
- * Host half of the credential-vault bundle.
+ * Host half of the dsh-credential-vault bundle.
  *
  * The browser (client.js) owns the vault data in localStorage. This half
  * exposes it to the Harness through two things:
  *   1. a loopback-only HTTP surface the browser POSTs its entries to, and
- *   2. an agent tool (`credential_vault_read`) the model calls to read them.
+ *   2. an agent tool (`dsh_credential_vault_read`) the model calls to read them.
  *
  * The in-memory snapshot is intentionally tiny: the browser re-syncs on every
  * change and on mount, so it is always the source of truth; the Host just
  * mirrors the last payload.
  *
- * @module credential-vault
+ * @module dsh-credential-vault
  */
 
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
@@ -18,13 +18,13 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 /** Cordis plugin name. */
-export const name = 'credential-vault'
+export const name = 'dsh-credential-vault'
 
 /** The web server is the only hard dependency. */
 export const inject = ['webServer']
 
 /** Route prefix owned by this plugin. */
-const PREFIX = '/credential-vault'
+const PREFIX = '/dsh-credential-vault'
 
 /** Cap the synced payload so a stray client cannot blow up the Host. Raised for large vaults. */
 const MAX_BODY_BYTES = 16 * 1024 * 1024
@@ -44,7 +44,7 @@ const MAX_LIMIT = 200
 const SUMMARY_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'expiry', 'updatedAt']
 
 /** Current plugin version. Keep in sync with package.json when releasing. */
-const CURRENT_VERSION = '1.1.9'
+const CURRENT_VERSION = '1.2.0'
 
 /** Where update checks read the latest published version from (GitHub Releases latest). */
 const RELEASES_API = 'https://api.github.com/repos/mysterycode-liwen/dsh-credential-vault/releases/latest'
@@ -68,17 +68,35 @@ function resolveHome(configured, env) {
 
 /** Durable store for the mirrored vault, so the tool still works after restart. */
 function createStore(home) {
-  const dir = join(home, 'credential-vault')
+  const dir = join(home, 'dsh-credential-vault')
+  const legacyDir = join(home, 'credential-vault')
   const file = join(dir, 'vault.json')
+  const legacyFile = join(legacyDir, 'vault.json')
   return {
     async restore() {
       try {
         const parsed = JSON.parse(await readFile(file, 'utf8'))
         if (parsed && Array.isArray(parsed.entries)) {
           snapshot = { entries: parsed.entries, updatedAt: Number(parsed.updatedAt) || 0 }
+          return
         }
       } catch {
-        // No file yet, or unreadable: start with an empty snapshot.
+        // No file at the renamed location yet: fall through to the legacy path.
+      }
+      // One-time migration from the pre-rename store location.
+      try {
+        const parsed = JSON.parse(await readFile(legacyFile, 'utf8'))
+        if (parsed && Array.isArray(parsed.entries)) {
+          snapshot = { entries: parsed.entries, updatedAt: Number(parsed.updatedAt) || 0 }
+          try {
+            await mkdir(dir, { recursive: true })
+            await writeFile(file, JSON.stringify(snapshot), 'utf8')
+          } catch {
+            // Migration write is best-effort; the in-memory snapshot still works.
+          }
+        }
+      } catch {
+        // Nothing to restore: start with an empty snapshot.
       }
     },
     async persist(next) {
@@ -327,7 +345,7 @@ export function apply(ctx, rawConfig) {
     ctx.effect(() => {
       const dispose = tools.register(
         {
-          name: 'credential_vault_read',
+          name: 'dsh_credential_vault_read',
           description:
             'Read the contents of the user\'s local credential vault (accounts, passwords, API keys, other secrets stored in the sidebar vault panel). Results are paginated: use limit/offset to page through large vaults, or mode="summary" for a lightweight id/title/category list first. By default secret values are masked; set revealSecrets to true (with mode="full") to include the actual passwords / API keys. Use this when the user asks you to look up, list, or use a credential saved in the vault.',
           parameters: {
@@ -373,7 +391,7 @@ export function apply(ctx, rawConfig) {
               },
               additionalProperties: true,
             },
-            render: () => [{ type: 'text', text: 'credential_vault_read' }],
+            render: () => [{ type: 'text', text: 'dsh_credential_vault_read' }],
           },
           async execute(args) {
             const a = args !== null && typeof args === 'object' ? args : {}
@@ -400,19 +418,19 @@ export function apply(ctx, rawConfig) {
         {},
       )
       return typeof dispose === 'function' ? dispose : () => {}
-    }, 'credential-vault-read-tool')
+    }, 'dsh-credential-vault-read-tool')
   }
 
   const systemPrompt = typeof ctx.get === 'function' ? ctx.get('systemPrompt') : undefined
   if (systemPrompt !== undefined && systemPrompt !== null && typeof systemPrompt.section === 'function') {
     ctx.effect(() => {
       systemPrompt.section({
-        name: 'tool:credential-vault',
+        name: 'tool:dsh-credential-vault',
         order: 118,
         text:
-          '凭据保险箱：用户把账号密码、API Key、恢复码等保存在侧边栏「凭据保险箱」里。需要查询这些凭据时用 credential_vault_read 工具（按 query / category 过滤；数据多时先用 mode="summary" 看标题清单，再用 limit/offset 翻页；默认隐藏密钥，mode="full" 且 revealSecrets:true 才返回明文）。',
+          '凭据保险箱：用户把账号密码、API Key、恢复码等保存在侧边栏「凭据保险箱」里。需要查询这些凭据时用 dsh_credential_vault_read 工具（按 query / category 过滤；数据多时先用 mode="summary" 看标题清单，再用 limit/offset 翻页；默认隐藏密钥，mode="full" 且 revealSecrets:true 才返回明文）。',
       })
       return () => {}
-    }, 'credential-vault-prompt')
+    }, 'dsh-credential-vault-prompt')
   }
 }
