@@ -7,14 +7,15 @@ window.__ModuleLoader__.load({
     var useEffect = React.useEffect;
     var useRef = React.useRef;
 
-    var STORAGE_KEY = '@local/credential-vault:entries:v1';
+    var STORAGE_KEY = '@local/dsh-credential-vault:entries:v1';
+    var STORAGE_KEY_LEGACY = '@local/credential-vault:entries:v1';
     var MASK = '••••••••••••';
-    var PANEL_ID = 'credential-vault';
+    var PANEL_ID = 'dsh-credential-vault';
     // Same-origin path served by the Host half (index.js). Relative so it works
     // whatever port the Web GUI is on.
-    var API = 'credential-vault/';
+    var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.1.9';
+    var VERSION = '1.2.0';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -90,7 +91,7 @@ window.__ModuleLoader__.load({
         resetSubmit: 'Reset password', resetFail: 'That answer does not match.', resetDone: 'Password has been reset. Please unlock again.',
         resetUnavailable: 'No security question is configured. Restore from a backup or clear this browser\'s site data.',
         lockIdle: 'Locked after inactivity',
-        updateTitle: 'Plugin updates', updateDesc: 'Check whether a newer version of the credential-vault plugin is available.',
+        updateTitle: 'Plugin updates', updateDesc: 'Check whether a newer version of the dsh-credential-vault plugin is available.',
         updateCurrent: 'Current version', updateLatest: 'Latest version', updateCheck: 'Check for updates',
         updateChecking: 'Checking…', updateAvailable: 'A newer version is available:', updateUpToDate: 'You are up to date.',
         updateNoRelease: 'No Release published yet — update check is unavailable.', updateFail: 'Update check failed. Please try again later.',
@@ -461,6 +462,11 @@ window.__ModuleLoader__.load({
     function loadEntries() {
       try {
         var raw = window.localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          // One-time migration from the pre-rename storage key.
+          raw = window.localStorage.getItem(STORAGE_KEY_LEGACY);
+          if (raw) { try { window.localStorage.setItem(STORAGE_KEY, raw); } catch (e) {} }
+        }
         if (!raw) return [];
         var arr = JSON.parse(raw);
         return Array.isArray(arr) ? arr.map(normalize) : [];
@@ -471,7 +477,7 @@ window.__ModuleLoader__.load({
       syncToHost(arr);
     }
     // Mirror the vault to the Host so the Harness/Agent can read it via the
-    // credential_vault_read tool. Fire-and-forget: the browser stays usable
+    // dsh_credential_vault_read tool. Fire-and-forget: the browser stays usable
     // even if the Host route is unavailable; localStorage is still authoritative.
     // Large vaults: DEBOUNCE so a burst of edits results in one POST, not dozens
     // of multi-megabyte payloads. A trailing timer always flushes the latest data.
@@ -649,7 +655,8 @@ window.__ModuleLoader__.load({
     }
 
     // ---- Access-password security store ---------------------------------
-    var SEC_KEY = '@local/credential-vault:security:v1';
+    var SEC_KEY = '@local/dsh-credential-vault:security:v1';
+    var SEC_KEY_LEGACY = '@local/credential-vault:security:v1';
     var IDLE_MS = 15 * 60 * 1000; // fallback duration when idleMs is absent
     var DEFAULT_SECURITY = { enabled: false, salt: '', passwordHash: null, question: null, answerHash: null, idleEnabled: false, idleMs: IDLE_MS };
     var securityCache = null;
@@ -659,6 +666,11 @@ window.__ModuleLoader__.load({
     function loadSecurity() {
       try {
         var raw = window.localStorage.getItem(SEC_KEY);
+        if (!raw) {
+          // One-time migration from the pre-rename storage key.
+          raw = window.localStorage.getItem(SEC_KEY_LEGACY);
+          if (raw) { try { window.localStorage.setItem(SEC_KEY, raw); } catch (e) {} }
+        }
         if (!raw) return Object.assign({}, DEFAULT_SECURITY);
         var s = JSON.parse(raw);
         return Object.assign({}, DEFAULT_SECURITY, s || {});
@@ -1921,7 +1933,7 @@ window.__ModuleLoader__.load({
         sidebarRight = (ctx.get && ctx.get('sidebarRight')) || null;
         lang0 = detectLang(locale);
         if (locale && typeof locale.register === 'function') {
-          try { locale.register('@local/credential-vault/ui', { en: DICTS.en, zh: DICTS.zh }); } catch (e) {}
+          try { locale.register('@local/dsh-credential-vault/ui', { en: DICTS.en, zh: DICTS.zh }); } catch (e) {}
         }
         ctx.slots.inject('sidebar.panellist', function () {
           return ctx.slots.register({ name: 'sidebar.panellist', id: PANEL_ID, order: 20, label: tr('title') }, PanelIcon);
