@@ -54,10 +54,13 @@ dsh plugin --profile desktop add link:E:/deepseek-harness/dsh-credential-vault
 ## 发布 / Publishing
 
 ```bash
+npm run check        # 发布前自检：client.js 的模块 id 与 cordis.patch.yml 的 name 必须等于包名
 npm pack --dry-run   # 核对实际打包的文件清单
-npm publish          # publishConfig.access = public，作用域包默认发布为公开
-git tag v1.2.2 && git push --tags
+npm publish          # publishConfig.access = public；会先自动跑一次 npm run check，不一致则中止
+git tag v1.2.3 && git push --tags
 ```
+
+`client.js` 里 `window.__ModuleLoader__.load({ id })` 的 `id` **必须等于 `package.json` 的 `name`**：DSH 按包名去浏览器模块表里查找，不一致时浏览器端不会挂载，表现为侧边栏入口与设置页整块消失（Host 端仍然正常）。改包名或改 scope 时，三处要同步：`package.json` 的 `name`、`client.js` 的 `id`、`cordis.patch.yml` 的 `name`。
 
 ## 许可 / License
 
