@@ -1,13 +1,22 @@
 {
   "name": "@mysterycode-liwen/dsh-credential-vault",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": false,
   "type": "module",
   "description": "DeepSeek Harness 侧边栏凭据保险箱：本地保存账号密码、API Key 与恢复码，支持访问密码、密保重置、闲置自动锁定，并提供默认脱敏的 Agent 读取工具。",
   "license": "MIT",
   "author": "李文 <59386344+mysterycode-liwen@users.noreply.github.com>",
   "homepage": "https://github.com/mysterycode-liwen/dsh-credential-vault#readme",
-  "keywords": ["dsh-plugin", "dsh", "deepseek-harness", "credential-vault", "vault", "security", "passwords", "api-keys"],
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "deepseek-harness",
+    "credential-vault",
+    "vault",
+    "security",
+    "passwords",
+    "api-keys"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mysterycode-liwen/dsh-credential-vault.git"
@@ -40,7 +49,11 @@
     "client": {
       "platform": "web",
       "immediately": true,
-      "inject": ["@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-ui-settings", "@deepseek-ai/dsh-client-ui-sidebar-right"]
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
     }
   }
 }

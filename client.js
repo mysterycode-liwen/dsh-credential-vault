@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: 'dsh-credential-vault',
+  id: '@mysterycode-liwen/dsh-credential-vault',
   factory(require) {
     var React = require('react');
     var h = React.createElement;

@@ -56,7 +56,7 @@ dsh plugin --profile desktop add link:E:/deepseek-harness/dsh-credential-vault
 ```bash
 npm pack --dry-run   # 核对实际打包的文件清单
 npm publish          # publishConfig.access = public，作用域包默认发布为公开
-git tag v1.2.1 && git push --tags
+git tag v1.2.2 && git push --tags
 ```
 
 ## 许可 / License
