@@ -1,8 +1,26 @@
 # 凭据保险箱 / Credential Vault
 
+[![npm version](https://img.shields.io/npm/v/@mysterycode-liwen/dsh-credential-vault.svg)](https://www.npmjs.com/package/@mysterycode-liwen/dsh-credential-vault)
+[![license](https://img.shields.io/npm/l/@mysterycode-liwen/dsh-credential-vault.svg)](LICENSE)
+[![DeepSeek Harness plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4C6EF5)](https://github.com/deepseek-ai/DeepSeek-Harness)
+
 一个 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 侧边栏插件：把账号密码、API Key、恢复码等凭据集中保存在本机，并提供一个 Agent 工具让 Harness 读取。
 
 A sidebar plugin for DeepSeek Harness that keeps accounts, passwords, API keys and recovery codes locally, plus an agent tool so the Harness can read them.
+
+> 数据只留在本机：浏览器 `localStorage` + 本地镜像文件，不上传、不同步、不加密存储。请勿在公用电脑上使用。
+
+## 目录
+
+- [安装](#安装--install)
+- [快速上手](#快速上手--quick-start)
+- [功能](#功能--features)
+- [Agent 工具](#agent-工具--agent-tool)
+- [安全说明](#安全说明--security-notice)
+- [常见问题](#常见问题--faq)
+- [更新日志](#更新日志--changelog)
+- [发布](#发布--publishing)
+- [许可](#许可--license)
 
 ## 安装 / Install
 
@@ -28,12 +46,27 @@ dsh plugin --profile desktop add github:mysterycode-liwen/dsh-credential-vault
 dsh plugin --profile desktop add link:E:/deepseek-harness/dsh-credential-vault
 ```
 
+安装后可检查实际装上的版本：
+
+```bash
+dsh plugin --profile desktop why @mysterycode-liwen/dsh-credential-vault
+```
+
+> ⚠️ npm 上还有一个**不带 scope 的** `dsh-credential-vault`，那是别人的同名包，与本项目无关。请认准 `@mysterycode-liwen/dsh-credential-vault`。
+
+## 快速上手 / Quick start
+
+1. 安装（见上）→ 重启 DeepSeek Harness（或在本插件卡片上关闭再启用）。
+2. 侧边栏点「凭据保险箱」，用「＋」新增条目；先用「账号密码」类录一条试试。
+3. 到「设置 → 凭据保险箱」决定是否开启访问密码与闲置自动锁定。
+4. 想让 Agent 读凭据时，直接让它调用 `dsh_credential_vault_read`；默认只返回脱敏视图。
+
 ## 功能 / Features
 
 - 侧边栏「凭据保险箱」面板，三类凭据各有独立表单：
-  - 账号密码：标题 / 账号 / 密码 / 登录网址 / 备注
-  - API Key：标题 / 平台 / Key / Base URL / 到期日期 / 备注
-  - 其他：标题 / 任意文本（如恢复码、许可证）/ 备注
+  - **账号密码**：标题 / 账号 / 密码 / 登录网址 / 备注
+  - **API Key**：标题 / 平台 / Key / Base URL / 到期日期 / 备注
+  - **其他**：标题 / 任意文本（如恢复码、许可证）/ 备注
 - 搜索、类型筛选、排序（最近更新 / 名称 / 类型）；大量条目用滚动列表浏览。
 - 逐条显示 / 隐藏、复制到剪贴板、编辑、删除。
 - **密码生成器**：在账号密码字段旁点「⚙ 生成」，用加密安全随机数（Web Crypto）生成强密码，可设置长度与字符类型、避开易混淆字符，并实时显示强度；可直接填入表单或复制。（仅账号密码类提供，API Key / 其他类不显示）
@@ -41,7 +74,20 @@ dsh plugin --profile desktop add link:E:/deepseek-harness/dsh-credential-vault
 - 登录网址 / Base URL 字段旁提供「访问」按钮，默认用 DeepSeek Harness 内置浏览器打开。
 - 导入 / 导出：把全部凭据导出为 JSON 备份文件，或从备份文件恢复；导入时可选「合并（跳过重复 ID）」或「替换全部」。
 - 设置页：访问密码开关、设置 / 修改密码、密保问题重置、闲置自动锁定（可开关、可选时长）、插件版本与检查更新。
-- Agent 工具 `dsh_credential_vault_read`：`mode=summary|full`、`limit`、`offset`、`query`、`category`、`revealSecrets`，默认脱敏。Host 端把浏览器同步过来的快照写到 `~/.dsh/dsh-credential-vault/vault.json`（旧版路径 `~/.dsh/credential-vault/vault.json` 会自动迁移）。
+
+## Agent 工具 / Agent tool
+
+工具名：`dsh_credential_vault_read`
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `mode` | `"summary"` \| `"full"` | `summary` 只返回 id / 标题 / 分类 / 账号 / 平台 / 到期时间，用于先摸清有哪些条目；默认 `full` |
+| `query` | string | 按标题、账号、平台、URL、备注做不区分大小写的子串过滤 |
+| `category` | `"all"` \| `"account"` \| `"apikey"` \| `"other"` | 只返回某一类，默认 `all` |
+| `limit` / `offset` | number | 分页，默认 20 条一页；条目多时先看 summary 再翻页 |
+| `revealSecrets` | boolean | 默认 `false`，密码 / API Key / 文本正文显示为 `••••••••`；只有显式传 `true` 且 `mode="full"` 才返回明文 |
+
+Host 端把浏览器同步过来的快照写到 `~/.dsh/dsh-credential-vault/vault.json`（旧版路径 `~/.dsh/credential-vault/vault.json` 会自动迁移）。
 
 ## 安全说明 / Security notice
 
@@ -50,6 +96,38 @@ dsh plugin --profile desktop add link:E:/deepseek-harness/dsh-credential-vault
 - `dsh_credential_vault_read` 默认把 `password` / `apiKey` / `content` 显示为 `••••••••`，只有显式传 `revealSecrets: true` 才返回明文。
 - **导出的备份文件包含明文密码 / API Key**：请像对待密码本身一样妥善保管，用完及时删除；导入仅在本机浏览器内进行。
 - Host 工具的注册发生在 Harness 启动时：首次安装后请**重启 Harness 或在插件管理里关闭再启用**该插件。
+- 访问密码与闲置锁定是**界面层**保护，不改变磁盘上明文存储这一事实；需要磁盘加密请用 BitLocker / FileVault 之类的手段。
+
+## 常见问题 / FAQ
+
+**装上了，但侧边栏和设置里都找不到？**
+八成是浏览器端模块没挂载。`client.js` 里 `window.__ModuleLoader__.load({ id })` 的 `id` **必须等于 `package.json` 的 `name`**，DSH 是按包名去浏览器模块表里查的。装完先重启 DSH；仍然没有就运行 `npm run check`（见 [发布](#发布--publishing)）。
+
+**Agent 说没有 `dsh_credential_vault_read` 这个工具？**
+Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理里把本插件关闭再启用。
+
+**数据存在哪？换机器/重装会丢吗？**
+浏览器端在 `localStorage`，Host 端镜像在 `~/.dsh/dsh-credential-vault/vault.json`。换机器不会自动带过去，请先用「导出」生成 JSON 备份再导入。
+
+**支持多设备同步吗？**
+不支持，也不打算支持——本插件的定位就是「不上云的本机保险箱」。
+
+**npm 上的 `dsh-credential-vault` 是这个项目吗？**
+不是。那是另一个作者的包。本项目只发布在 `@mysterycode-liwen/dsh-credential-vault` 这个 scope 下。
+
+## 更新日志 / Changelog
+
+### 1.3.0 — 2026-11-20
+
+- 重新发布到 npm，`latest` 指向本版本。
+- 包名统一为 `@mysterycode-liwen/dsh-credential-vault`：`package.json` 的 `name`、`client.js` 的模块 `id`、`cordis.patch.yml` 的 `name` 三处一致。
+- 补上许可证文件与 `publishConfig.access = "public"`。
+- 新增 `npm run check`（`scripts/check-package.mjs`）并在 `prepublishOnly` 中自动执行，防止再次出现「包名与模块 id 不一致」导致插件静默消失。
+
+### 1.2.x
+
+- 1.2.0 之前在 GitHub 上以仓库标签发布；1.2.1 / 1.2.2 / 1.2.3 曾短暂出现在 npm，随后整包被删除。
+- 这几个版本号按 npm 规则**永久作废**，请勿尝试安装；需要历史版本请从 git 标签取源码。
 
 ## 发布 / Publishing
 
@@ -61,6 +139,8 @@ git tag v1.3.0 && git push --tags
 ```
 
 `client.js` 里 `window.__ModuleLoader__.load({ id })` 的 `id` **必须等于 `package.json` 的 `name`**：DSH 按包名去浏览器模块表里查找，不一致时浏览器端不会挂载，表现为侧边栏入口与设置页整块消失（Host 端仍然正常）。改包名或改 scope 时，三处要同步：`package.json` 的 `name`、`client.js` 的 `id`、`cordis.patch.yml` 的 `name`。
+
+进阶：可以用 `npm stage publish` + `npm stage approve <stage-id>` 把「打包」和「2FA 证明」拆成两步；`approve` / `reject` 需要交互式 2FA，绕过 2FA 的 granular token 无权执行。
 
 ## 许可 / License
 
