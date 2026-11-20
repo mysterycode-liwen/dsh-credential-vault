@@ -144,4 +144,6 @@ git tag v1.3.0 && git push --tags
 
 ## 许可 / License
 
-MIT
+MIT © 2026 李文（GitHub [@mysterycode-liwen](https://github.com/mysterycode-liwen)）
+
+本项目由 李文 独立开发。你可以自由使用、修改、分发、商用乃至闭源再分发，唯一义务是在副本或重要部分中保留上面的版权声明与本许可声明；软件按「原样」提供，不含任何明示或暗示的担保。完整条款见 [LICENSE](LICENSE)。
