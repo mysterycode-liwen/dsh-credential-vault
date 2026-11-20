@@ -1,14 +1,22 @@
 {
-  "name": "dsh-credential-vault",
-  "version": "1.2.0",
+  "name": "@mysterycode-liwen/dsh-credential-vault",
+  "version": "1.2.1",
   "private": false,
   "type": "module",
   "description": "DeepSeek Harness 侧边栏凭据保险箱：本地保存账号密码、API Key 与恢复码，支持访问密码、密保重置、闲置自动锁定，并提供默认脱敏的 Agent 读取工具。",
   "license": "MIT",
-  "keywords": ["dsh-plugin", "dsh-credential-vault", "security", "passwords", "api-keys"],
+  "author": "李文 <59386344+mysterycode-liwen@users.noreply.github.com>",
+  "homepage": "https://github.com/mysterycode-liwen/dsh-credential-vault#readme",
+  "keywords": ["dsh-plugin", "dsh", "deepseek-harness", "credential-vault", "vault", "security", "passwords", "api-keys"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/mysterycode-liwen/dsh-credential-vault.git"
+    "url": "git+https://github.com/mysterycode-liwen/dsh-credential-vault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mysterycode-liwen/dsh-credential-vault/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "exports": {
     ".": "./index.js",
@@ -22,7 +30,8 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {

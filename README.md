@@ -6,11 +6,27 @@ A sidebar plugin for DeepSeek Harness that keeps accounts, passwords, API keys a
 
 ## 安装 / Install
 
+从 npm 安装（推荐）：
+
+```bash
+dsh plugin --profile desktop add @mysterycode-liwen/dsh-credential-vault
+```
+
+npm 页面：<https://www.npmjs.com/package/@mysterycode-liwen/dsh-credential-vault>
+
+也可以在 DeepSeek Harness 的「设置 → 插件 → 插件市场」中搜索 `credential vault`（市场索引刷新后可见）。
+
+固定到某个提交从源码安装：
+
 ```bash
 dsh plugin --profile desktop add github:mysterycode-liwen/dsh-credential-vault
 ```
 
-或在 DeepSeek Harness 的「设置 → 插件 → 插件市场」中搜索 `dsh-credential-vault`。
+从本地目录安装（开发用）：
+
+```bash
+dsh plugin --profile desktop add link:E:/deepseek-harness/dsh-credential-vault
+```
 
 ## 功能 / Features
 
@@ -34,6 +50,14 @@ dsh plugin --profile desktop add github:mysterycode-liwen/dsh-credential-vault
 - `dsh_credential_vault_read` 默认把 `password` / `apiKey` / `content` 显示为 `••••••••`，只有显式传 `revealSecrets: true` 才返回明文。
 - **导出的备份文件包含明文密码 / API Key**：请像对待密码本身一样妥善保管，用完及时删除；导入仅在本机浏览器内进行。
 - Host 工具的注册发生在 Harness 启动时：首次安装后请**重启 Harness 或在插件管理里关闭再启用**该插件。
+
+## 发布 / Publishing
+
+```bash
+npm pack --dry-run   # 核对实际打包的文件清单
+npm publish          # publishConfig.access = public，作用域包默认发布为公开
+git tag v1.2.1 && git push --tags
+```
 
 ## 许可 / License
 
