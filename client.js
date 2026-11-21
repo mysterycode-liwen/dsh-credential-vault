@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.2.0';
+    var VERSION = '1.4.0';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -102,7 +102,7 @@ window.__ModuleLoader__.load({
         upgradeSuccess: 'Upgrade installed.', upgradeRestart: 'Restart DeepSeek Harness to finish.', upgradeFail: 'Upgrade failed: ',
         upgradeTitle: 'Confirm upgrade', upgradeGo: 'Upgrade',
         export: 'Export', import: 'Import',
-        exportWarn: 'The backup file contains plaintext passwords and API keys. Keep it safe and delete it when no longer needed. Continue?',
+        exportWarn: 'Exported files contain plaintext passwords and API keys. Keep them safe and delete them when no longer needed.',
         exportDone: 'Backup downloaded', exportFail: 'Export failed', exportEmpty: 'Nothing to export',
         exportTitle: 'Export credentials', exportConfirm: 'Export backup',
         importTitle: 'Import credentials', importHint: 'Imported secrets are stored locally, just like the rest of your vault.',
@@ -113,6 +113,10 @@ window.__ModuleLoader__.load({
         importReplaceWarn: 'All current entries will be removed and replaced by the file contents. This cannot be undone.',
         importConfirm: 'Import', importDone: 'Import complete',
         importInvalid: 'Invalid backup file', importEmpty: 'No credentials in this file',
+        importDetected: 'Detected format', fmtJson: 'JSON', fmtCsv: 'CSV', fmtMd: 'Markdown',
+        exportFormat: 'Export format', exportJson: 'JSON backup', exportJsonHint: 'Full fidelity — restores every field exactly (recommended).',
+        exportCsv: 'CSV for Excel / WPS', exportCsvHint: 'Opens directly in spreadsheets. UTF-8 with BOM.',
+        exportMd: 'Markdown', exportMdHint: 'Readable table — easy to view, copy and version.',
         genButton: 'Generate password', genField: 'Generate a password for this field',
         genTitle: 'Password generator', genHint: 'Generates a strong random password using your browser’s cryptographic random source. Nothing is stored or sent anywhere.',
         genLength: 'Length', genUpper: 'Uppercase (A–Z)', genLower: 'Lowercase (a–z)', genDigits: 'Digits (0–9)',
@@ -201,7 +205,7 @@ window.__ModuleLoader__.load({
         upgradeSuccess: '升级已安装。', upgradeRestart: '请重启 DeepSeek Harness 以完成升级。', upgradeFail: '升级失败：',
         upgradeTitle: '确认升级', upgradeGo: '立即升级',
         export: '导出', import: '导入',
-        exportWarn: '备份文件包含明文密码和 API Key，请妥善保管并在不需要时删除。是否继续？',
+        exportWarn: '导出的文件包含明文密码和 API Key，请妥善保管并在不需要时删除。',
         exportDone: '备份已下载', exportFail: '导出失败', exportEmpty: '没有可导出的凭据',
         exportTitle: '导出凭据', exportConfirm: '导出备份',
         importTitle: '导入凭据', importHint: '导入的密钥与保险箱其他数据一样仅保存在本机。',
@@ -212,6 +216,10 @@ window.__ModuleLoader__.load({
         importReplaceWarn: '当前所有条目将被删除并由文件内容替换，此操作不可撤销。',
         importConfirm: '导入', importDone: '导入完成',
         importInvalid: '备份文件无效', importEmpty: '文件中没有凭据',
+        importDetected: '识别到的格式', fmtJson: 'JSON', fmtCsv: 'CSV', fmtMd: 'Markdown',
+        exportFormat: '导出格式', exportJson: 'JSON 备份', exportJsonHint: '完整保真，可精确恢复全部字段（推荐）。',
+        exportCsv: 'CSV（Excel / WPS）', exportCsvHint: '可用表格软件直接打开，UTF-8 BOM 编码。',
+        exportMd: 'Markdown 表格', exportMdHint: '可读表格，方便查看、复制与版本管理。',
         genButton: '生成密码', genField: '为此字段生成密码',
         genTitle: '密码生成器', genHint: '使用浏览器的加密随机源生成高强度随机密码，不会存储或上传任何数据。',
         genLength: '长度', genUpper: '大写字母 (A–Z)', genLower: '小写字母 (a–z)', genDigits: '数字 (0–9)',
@@ -313,6 +321,8 @@ window.__ModuleLoader__.load({
       '.cv-import-opt-name{font-size:13px;font-weight:550;color:var(--cv-t1)}',
       '.cv-import-opt-hint{font-size:12px;color:var(--cv-t2);margin-top:3px;line-height:1.45}',
       '.cv-import-warn{color:var(--cv-err);font-weight:550}',
+      '.cv-export-opt{width:100%;text-align:left}',
+      '.cv-export-icon{font-size:18px;line-height:1.2;flex:0 0 auto}',
       '.cv-mini{padding:4px 9px;border-radius:7px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t2);font-size:11.5px;cursor:pointer;white-space:nowrap;transition:background .16s,color .16s,border-color .16s,transform .1s}',
       '.cv-mini:hover{color:var(--cv-t1);background:var(--cv-l2);border-color:var(--cv-b2)}',
       '.cv-mini:active{transform:scale(.95);background:var(--cv-b1)}',
@@ -623,18 +633,13 @@ window.__ModuleLoader__.load({
         entries: arr.map(function (e) { return normalize(e); })
       };
     }
-    function exportBackup(arr) {
-      if (!arr || arr.length === 0) return false;
+    function downloadText(text, mime, filename) {
       try {
-        var payload = JSON.stringify(buildBackup(arr), null, 2);
-        var blob = new Blob([payload], { type: 'application/json;charset=utf-8' });
+        var blob = new Blob([text], { type: mime });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
-        var d = new Date();
-        function pad(n) { return n < 10 ? '0' + n : '' + n; }
-        var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
         a.href = url;
-        a.download = '凭据保险箱-' + stamp + '.json';
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -642,7 +647,165 @@ window.__ModuleLoader__.load({
         return true;
       } catch (e) { return false; }
     }
-    // Returns { entries: [...] } or throws a recognisable error.
+    function stampNow() {
+      var d = new Date();
+      function pad(n) { return n < 10 ? '0' + n : '' + n; }
+      return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
+    }
+    var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content', 'notes', 'createdAt', 'updatedAt'];
+
+    // CSV helpers (RFC 4180): quote fields containing comma / quote / newline,
+    // double embedded quotes. The file carries a UTF-8 BOM so Excel/WPS show
+    // Chinese characters correctly when opened by double-click.
+    function csvEscape(v) {
+      var s = v == null ? '' : String(v);
+      return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    function buildCsv(arr) {
+      var lines = [EXPORT_COLS.map(csvEscape).join(',')];
+      arr.forEach(function (e) {
+        var n = normalize(e);
+        lines.push(EXPORT_COLS.map(function (c) { return csvEscape(n[c]); }).join(','));
+      });
+      return '\uFEFF' + lines.join('\r\n');
+    }
+    function csvParse(text) {
+      var s = String(text || '').replace(/^\uFEFF/, '');
+      var rows = [], row = [], field = '', i = 0, inQ = false;
+      while (i < s.length) {
+        var c = s.charAt(i);
+        if (inQ) {
+          if (c === '"') {
+            if (s.charAt(i + 1) === '"') { field += '"'; i += 2; continue; }
+            inQ = false; i++; continue;
+          }
+          field += c; i++; continue;
+        }
+        if (c === '"') { inQ = true; i++; continue; }
+        if (c === ',') { row.push(field); field = ''; i++; continue; }
+        if (c === '\r') { i++; continue; }
+        if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+        field += c; i++;
+      }
+      if (field !== '' || row.length) { row.push(field); rows.push(row); }
+      return rows;
+    }
+    function parseCsv(text) {
+      var rows = csvParse(text);
+      if (rows.length < 2) throw new Error('shape');
+      var header = rows[0].map(function (x) { return String(x).trim(); });
+      if (header.indexOf('title') === -1) throw new Error('shape');
+      var out = [];
+      for (var r = 1; r < rows.length; r++) {
+        var cells = rows[r];
+        if (cells.length === 1 && !String(cells[0]).trim()) continue;
+        var e = {};
+        header.forEach(function (h, i2) { if (h) e[h] = cells[i2] != null ? cells[i2] : ''; });
+        ['createdAt', 'updatedAt'].forEach(function (k) {
+          if (e[k] != null && e[k] !== '' && /^\d+$/.test(String(e[k]))) e[k] = Number(e[k]);
+        });
+        out.push(normalize(e));
+      }
+      return out;
+    }
+
+    // Markdown table helpers. Cell text is escaped so pipes, backslashes and
+    // newlines survive a round-trip; on import they are decoded back exactly.
+    function mdEscape(v) {
+      return String(v == null ? '' : v)
+        .replace(/\\/g, '\\\\').replace(/\|/g, '\\|')
+        .replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+    }
+    function mdDecode(s) {
+      var out = '', i = 0;
+      while (i < s.length) {
+        if (s.charAt(i) === '\\' && i + 1 < s.length) {
+          var c = s.charAt(i + 1);
+          if (c === 'n') { out += '\n'; i += 2; continue; }
+          if (c === 'r') { out += '\r'; i += 2; continue; }
+          if (c === '|') { out += '|'; i += 2; continue; }
+          if (c === '\\') { out += '\\'; i += 2; continue; }
+        }
+        out += s.charAt(i); i++;
+      }
+      return out;
+    }
+    function mdSplitRow(line) {
+      var s = String(line).trim();
+      if (s.charAt(0) === '|') s = s.slice(1);
+      if (s.charAt(s.length - 1) === '|') s = s.slice(0, -1);
+      var cells = [], cur = '', i = 0;
+      while (i < s.length) {
+        if (s.charAt(i) === '\\' && i + 1 < s.length) { cur += s.charAt(i) + s.charAt(i + 1); i += 2; continue; }
+        if (s.charAt(i) === '|') { cells.push(cur); cur = ''; i++; continue; }
+        cur += s.charAt(i); i++;
+      }
+      // The trailing '|' was stripped above, so the final cell is still in cur.
+      cells.push(cur);
+      // buildMarkdown pads each cell with one space on either side of '|';
+      // strip exactly one such padding space, preserving any intentional ones.
+      return cells.map(function (x) { return mdDecode(x.replace(/^ /, '').replace(/ $/, '')); });
+    }
+    function buildMarkdown(arr) {
+      var lines = ['# Credential Vault / 凭据保险箱', '', 'Exported: ' + new Date().toISOString(), '',
+        '| ' + EXPORT_COLS.join(' | ') + ' |',
+        '| ' + EXPORT_COLS.map(function () { return '---'; }).join(' | ') + ' |'];
+      arr.forEach(function (e) {
+        var n = normalize(e);
+        lines.push('| ' + EXPORT_COLS.map(function (c) { return mdEscape(n[c]); }).join(' | ') + ' |');
+      });
+      return lines.join('\n');
+    }
+    function parseMarkdown(text) {
+      var lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/);
+      var hIdx = -1;
+      for (var i = 0; i < lines.length - 1; i++) {
+        if (/^\s*\|/.test(lines[i]) && /title/.test(lines[i]) &&
+            /^\s*\|/.test(lines[i + 1]) && /-/.test(lines[i + 1])) { hIdx = i; break; }
+      }
+      if (hIdx < 0) throw new Error('shape');
+      var header = mdSplitRow(lines[hIdx]);
+      if (header.indexOf('title') === -1) throw new Error('shape');
+      var out = [];
+      for (var r = hIdx + 2; r < lines.length; r++) {
+        var line = lines[r];
+        if (!/^\s*\|/.test(line)) continue;
+        var cells = mdSplitRow(line);
+        var e = {};
+        header.forEach(function (h, i2) { if (h) e[h] = cells[i2] != null ? cells[i2] : ''; });
+        ['createdAt', 'updatedAt'].forEach(function (k) {
+          if (e[k] != null && e[k] !== '' && /^\d+$/.test(String(e[k]))) e[k] = Number(e[k]);
+        });
+        out.push(normalize(e));
+      }
+      return out;
+    }
+
+    // Auto-detect the format and return { entries, fmt } or throw a known error.
+    function parseImport(text) {
+      var s = String(text || '').replace(/^\uFEFF/, '');
+      var t = s.trim();
+      if (!t) throw new Error('empty');
+      if (t.charAt(0) === '{' || t.charAt(0) === '[') return { entries: parseBackup(t), fmt: 'json' };
+      var lines = t.split(/\r?\n/);
+      for (var li = 0; li < lines.length; li++) {
+        if (/^\s*\|/.test(lines[li]) && /title/.test(lines[li])) return { entries: parseMarkdown(t), fmt: 'md' };
+      }
+      var first = lines[0] || '';
+      if (first.indexOf(',') !== -1 && /\bid\b/.test(first) && /title/.test(first)) return { entries: parseCsv(t), fmt: 'csv' };
+      throw new Error('parse');
+    }
+    function exportBackup(arr) {
+      if (!arr || arr.length === 0) return false;
+      return downloadText(JSON.stringify(buildBackup(arr), null, 2), 'application/json;charset=utf-8', '凭据保险箱-' + stampNow() + '.json');
+    }
+    function exportEntries(arr, fmt) {
+      if (!arr || arr.length === 0) return false;
+      if (fmt === 'csv') return downloadText(buildCsv(arr), 'text/csv;charset=utf-8', '凭据保险箱-' + stampNow() + '.csv');
+      if (fmt === 'md') return downloadText(buildMarkdown(arr), 'text/markdown;charset=utf-8', '凭据保险箱-' + stampNow() + '.md');
+      return exportBackup(arr);
+    }
+    // Returns entries array or throws a recognisable error (JSON backups only).
     function parseBackup(text) {
       var data;
       try { data = JSON.parse(text); } catch (e) { throw new Error('parse'); }
@@ -650,10 +813,8 @@ window.__ModuleLoader__.load({
       if (data && Array.isArray(data.entries)) arr = data.entries;
       else if (Array.isArray(data)) arr = data; // tolerate a bare array
       if (!arr) throw new Error('shape');
-      var clean = arr.filter(function (e) { return e && typeof e === 'object'; }).map(normalize);
-      return clean;
+      return arr.filter(function (e) { return e && typeof e === 'object'; }).map(normalize);
     }
-
     // ---- Access-password security store ---------------------------------
     var SEC_KEY = '@local/dsh-credential-vault:security:v1';
     var SEC_KEY_LEGACY = '@local/credential-vault:security:v1';
@@ -1040,19 +1201,21 @@ window.__ModuleLoader__.load({
       var modeState = useState('merge'), mode = modeState[0], setMode = modeState[1];
       var errState = useState(''), err = errState[0], setErr = errState[1];
       var inputRef = useState({})[0];
+      var detectedState = useState(''), detected = detectedState[0], setDetected = detectedState[1];
 
       function onFile(ev) {
         var f = ev.target.files && ev.target.files[0];
         if (!f) return;
-        setErr(''); setPending(null);
+        setErr(''); setPending(null); setDetected('');
         setFileInfo({ name: f.name, size: f.size });
         if (typeof FileReader === 'undefined') { setErr(t('importInvalid')); return; }
         var reader = new FileReader();
         reader.onload = function () {
           try {
-            var clean = parseBackup(String(reader.result || ''));
-            setPending(clean);
-            if (clean.length === 0) setErr(t('importEmpty'));
+            var res = parseImport(String(reader.result || ''));
+            setPending(res.entries);
+            setDetected(res.fmt);
+            if (res.entries.length === 0) setErr(t('importEmpty'));
           } catch (e) { setErr(t('importInvalid')); setPending(null); }
         };
         reader.onerror = function () { setErr(t('importInvalid')); setPending(null); };
@@ -1070,13 +1233,14 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cv-modal-body' },
             h('input', {
               ref: function (el) { inputRef.el = el; },
-              type: 'file', accept: '.json,application/json', style: { display: 'none' },
+              type: 'file', accept: '.json,.csv,.md,.markdown,application/json,text/csv,text/markdown', style: { display: 'none' },
               onChange: onFile
             }),
             h('button', { type: 'button', className: 'cv-btn', onClick: function () { if (inputRef.el) inputRef.el.click(); } },
               fileInfo ? '📄 ' + fileInfo.name : t('import')),
             fileInfo ? h('div', { className: 'cv-import-file' },
-              t('importFound') + '：' + (pending ? pending.length : '…')) : null,
+              t('importFound') + '：' + (pending ? pending.length : '…') +
+              (detected ? ' · ' + t('importDetected') + '：' + t('fmt' + detected.charAt(0).toUpperCase() + detected.slice(1)) : '')) : null,
             h('div', { className: 'cv-form-label' }, t('importMode')),
             h('div', { className: 'cv-import-modes' },
               h('label', { className: 'cv-import-opt' },
@@ -1099,6 +1263,37 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cv-modal-foot' },
             h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
             h('button', { className: 'cv-btn cv-btn-primary', disabled: !pending || pending.length === 0, onClick: submit }, t('importConfirm'))
+          )
+        )
+      );
+    }
+
+    function ExportModal(props) {
+      var t = props.t;
+      var fmts = [
+        { k: 'json', name: 'exportJson', hint: 'exportJsonHint', icon: '📦' },
+        { k: 'csv', name: 'exportCsv', hint: 'exportCsvHint', icon: '📊' },
+        { k: 'md', name: 'exportMd', hint: 'exportMdHint', icon: '📝' }
+      ];
+      return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
+        h('div', { className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('exportTitle'), tabIndex: -1,
+          onKeyDown: function (e) { if (e.key === 'Escape') props.onCancel(); } },
+          h('div', { className: 'cv-modal-head' }, h('h2', null, t('exportTitle'))),
+          h('div', { className: 'cv-modal-hint' }, t('exportWarn')),
+          h('div', { className: 'cv-modal-body' },
+            h('div', { className: 'cv-form-label' }, t('exportFormat')),
+            h('div', { className: 'cv-import-modes' }, fmts.map(function (f) {
+              return h('button', { type: 'button', key: f.k, className: 'cv-import-opt cv-export-opt', onClick: function () { props.onPick(f.k); } },
+                h('span', { className: 'cv-export-icon' }, f.icon),
+                h('div', null,
+                  h('div', { className: 'cv-import-opt-name' }, t(f.name)),
+                  h('div', { className: 'cv-import-opt-hint' }, t(f.hint))
+                )
+              );
+            }))
+          ),
+          h('div', { className: 'cv-modal-foot' },
+            h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel'))
           )
         )
       );
@@ -1662,6 +1857,7 @@ window.__ModuleLoader__.load({
       var toastState = useState(''), toast = toastState[0], setToast = toastState[1];
       var secRevState = useState(0), secRev = secRevState[0], setSecRev = secRevState[1];
       var importState = useState(false), importing = importState[0], setImporting = importState[1];
+      var exportState = useState(false), exporting = exportState[0], setExporting = exportState[1];
       var genState = useState(null), genTarget = genState[0], setGenTarget = genState[1];
       var auditState = useState(false), auditing = auditState[0], setAuditing = auditState[1];
       var confirmState = useState(null), confirmDlg = confirmState[0], setConfirmDlg = confirmState[1];
@@ -1785,13 +1981,11 @@ window.__ModuleLoader__.load({
       }
       function doExport() {
         if (entries.length === 0) { setToast(t('exportEmpty')); return; }
-        setConfirmDlg({
-          title: t('exportTitle'), message: t('exportWarn'), confirmLabel: t('exportConfirm'),
-          onConfirm: function () {
-            setConfirmDlg(null);
-            setToast(exportBackup(entries) ? t('exportDone') : t('exportFail'));
-          }
-        });
+        setExporting(true);
+      }
+      function pickExport(fmt) {
+        setExporting(false);
+        setToast(exportEntries(entries, fmt) ? t('exportDone') : t('exportFail'));
       }
       function doImport(incoming, mode) {
         setEntries(function (prev) {
@@ -1908,6 +2102,9 @@ window.__ModuleLoader__.load({
         }) : null,
         importing ? h(ImportModal, {
           t: t, onImport: doImport, onCancel: function () { setImporting(false); }
+        }) : null,
+        exporting ? h(ExportModal, {
+          t: t, onPick: pickExport, onCancel: function () { setExporting(false); }
         }) : null,
         auditing ? h(AuditModal, {
           t: t, entries: entries, onEdit: auditEditEntry, onCancel: function () { setAuditing(false); }
