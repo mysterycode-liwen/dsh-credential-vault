@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.4.1';
+    var VERSION = '1.4.2';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -467,7 +467,7 @@ window.__ModuleLoader__.load({
         if (n.provider == null && n.username) n.provider = n.username;
         if (n.endpoint == null && n.url) n.endpoint = n.url;
       }
-      return n;
+      return sanitize(n);
     }
     function loadEntries() {
       try {
@@ -667,6 +667,26 @@ window.__ModuleLoader__.load({
     var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', other: '其他' };
     var LABEL_CATEGORIES = {};
     Object.keys(CATEGORY_LABELS).forEach(function (k) { LABEL_CATEGORIES[CATEGORY_LABELS[k]] = k; });
+    // Only export fields that belong to the entry's type. A record may carry
+    // stale fields from a past type change (e.g. an API Key with leftover
+    // username/password/url); those must not leak into readable exports.
+    var VISIBLE_FIELDS = {
+      account: ['title', 'username', 'password', 'url', 'notes'],
+      apikey: ['title', 'provider', 'apiKey', 'endpoint', 'expiry', 'notes'],
+      other: ['title', 'content', 'notes']
+    };
+    function fieldsFor(cat) { return VISIBLE_FIELDS[cat] || VISIBLE_FIELDS.account; }
+    // Strip fields that do not belong to the entry's type. Applied inside
+    // normalize(), so stale fields (e.g. an API Key carrying username/password/
+    // url from a past type change) are removed everywhere data enters the app:
+    // loading from localStorage, importing, and exporting. Technical columns
+    // (id / category / timestamps) stay for identity and ordering.
+    function sanitize(e) {
+      var keep = fieldsFor(e.category).concat(['id', 'category', 'createdAt', 'updatedAt']);
+      var out = {};
+      keep.forEach(function (k) { if (e[k] !== undefined) out[k] = e[k]; });
+      return out;
+    }
 
     // CSV helpers (RFC 4180): quote fields containing comma / quote / newline,
     // double embedded quotes. The file carries a UTF-8 BOM so Excel/WPS show
@@ -688,7 +708,11 @@ window.__ModuleLoader__.load({
       var lines = [CSV_COLS.map(function (c) { return csvEscape(FIELD_LABELS[c] || c); }).join(',')];
       arr.forEach(function (e) {
         var n = normalize(e);
+        var visible = fieldsFor(n.category);
         lines.push(CSV_COLS.map(function (c) {
+          // Technical columns stay for lossless import; business columns that
+          // do not belong to this type are left blank.
+          if (visible.indexOf(c) < 0 && c !== 'id' && c !== 'category' && c !== 'createdAt' && c !== 'updatedAt') return '';
           var v = (c === 'createdAt' || c === 'updatedAt') ? csvDate(n[c]) : n[c];
           if (c === 'category') v = CATEGORY_LABELS[v] || v;
           return csvEscape(v);
@@ -800,13 +824,12 @@ window.__ModuleLoader__.load({
         lines.push('');
         lines.push('| 字段 | 内容 |');
         lines.push('| --- | --- |');
-        EXPORT_COLS.forEach(function (c) {
-          if (c === 'id' || c === 'title' || c === 'createdAt' || c === 'updatedAt') return;
+        lines.push('| 类型 | ' + mdCell(CATEGORY_LABELS[n.category] || n.category || '账号') + ' |');
+        fieldsFor(n.category).forEach(function (c) {
+          if (c === 'title') return;
           var v = n[c];
           if (v == null || v === '') return;
-          var label = FIELD_LABELS[c] || c;
-          if (c === 'category') v = CATEGORY_LABELS[v] || v;
-          lines.push('| ' + label + ' | ' + mdCell(v) + ' |');
+          lines.push('| ' + (FIELD_LABELS[c] || c) + ' | ' + mdCell(v) + ' |');
         });
         lines.push('');
         lines.push('---');

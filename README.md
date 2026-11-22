@@ -123,6 +123,12 @@ Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理�
 
 ## 更新日志 / Changelog
 
+### 1.4.2 — 2026-11-22
+
+- **字段过滤**：导入 / 加载 / 导出时统一按凭据类型清理字段，API Key 记录若残留账号类的「用户名 / 密码 / 网址」会被自动剔除，不再出现在卡片或导出文件中。
+- 清理在 `normalize()` 里统一完成：从 localStorage 加载、三种格式导入、导出渲染都走同一入口；合法字段（ID / 类型 / 时间戳）保留，无损导回不变。
+- 新增回归测试：验证脏 API Key 记录经 JSON / CSV / Markdown 导入后脏字段被清除、真字段保留。
+
 ### 1.4.1 — 2026-11-22
 
 - **可读性改进**：Markdown 导出由超宽表格改为每条凭据一张卡片、中文标签两列表、空字段省略、类型显示为「账号 / API Key / 其他」，一目了然。
@@ -155,7 +161,7 @@ Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理�
 npm run check        # 发布前自检：client.js 的模块 id 与 cordis.patch.yml 的 name 必须等于包名
 npm pack --dry-run   # 核对实际打包的文件清单
 npm publish          # publishConfig.access = public；会先自动跑一次 npm run check，不一致则中止
-git tag v1.4.1 && git push --tags
+git tag v1.4.2 && git push --tags
 ```
 
 `client.js` 里 `window.__ModuleLoader__.load({ id })` 的 `id` **必须等于 `package.json` 的 `name`**：DSH 按包名去浏览器模块表里查找，不一致时浏览器端不会挂载，表现为侧边栏入口与设置页整块消失（Host 端仍然正常）。改包名或改 scope 时，三处要同步：`package.json` 的 `name`、`client.js` 的 `id`、`cordis.patch.yml` 的 `name`。

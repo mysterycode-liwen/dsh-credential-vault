@@ -91,6 +91,46 @@ const legacyMd = [
 const legacyOut = api.parseMarkdown(legacyMd);
 assert(legacyOut.length === 1 && legacyOut[0].title === 'GitHub', 'legacy wide-table Markdown imports');
 
+console.log('\n== type-filtered readable output (dirty apikey) ==');
+// An API Key record that still carries stale account-type fields.
+const dirty = api.normalize({ id: 'id-dirty', title: 'DeepSeek', category: 'apikey',
+  username: '1', password: '1', url: '1', provider: 'DeepSeek',
+  apiKey: 'sk-test', endpoint: 'https://api.deepseek.com',
+  createdAt: 1700000006000, updatedAt: 1700000007000 });
+const dirtyMd = api.buildMarkdown([dirty]);
+assert(dirtyMd.indexOf('| 类型 | API Key |') !== -1, 'apikey card shows 类型 = API Key');
+assert(dirtyMd.indexOf('| 用户名 |') === -1, 'apikey card hides stale 用户名');
+assert(dirtyMd.indexOf('| 密码 |') === -1, 'apikey card hides stale 密码');
+assert(dirtyMd.indexOf('| 网址 |') === -1, 'apikey card hides stale 网址');
+assert(dirtyMd.indexOf('| 服务商 | DeepSeek |') !== -1, 'apikey card shows 服务商');
+// Comment still holds the full data -> lossless import.
+eqEntries(api.parseMarkdown(dirtyMd), [dirty], 'apikey dirty md (comment lossless)');
+const dirtyCsv = api.buildCsv([dirty]);
+const csvHeader = dirtyCsv.replace(/^\uFEFF/, '').split('\r\n')[0].split(',');
+const csvRow = dirtyCsv.replace(/^\uFEFF/, '').split('\r\n')[1].split(',');
+const col = (name) => csvRow[csvHeader.indexOf(name)];
+assert(col('用户名') === '' && col('密码') === '' && col('网址') === '', 'apikey CSV blanks stale account columns');
+assert(col('服务商') === 'DeepSeek' && col('API Key') === 'sk-test', 'apikey CSV keeps real fields');
+
+console.log('\n== import sanitizes dirty apikey (core fix) ==');
+// A full JSON backup with a stale-field apikey: importing must strip them.
+const dirtyBackup = JSON.stringify({ format: 'dsh-credential-vault-backup', version: 1,
+  app: 'dsh-credential-vault', entries: [dirty] });
+const imported = api.parseBackup(dirtyBackup);
+assert(imported[0].username === undefined && imported[0].password === undefined && imported[0].url === undefined,
+  'import strips stale username/password/url from apikey');
+assert(imported[0].provider === 'DeepSeek' && imported[0].apiKey === 'sk-test',
+  'import keeps real apikey fields');
+// Importing a dirty CSV / Markdown must also come back clean.
+const importedCsv = api.parseCsv(dirtyCsv);
+assert(importedCsv[0].username === undefined && importedCsv[0].password === undefined && importedCsv[0].url === undefined,
+  'CSV import strips stale account fields');
+const importedMd = api.parseMarkdown(dirtyMd);
+assert(importedMd[0].username === undefined && importedMd[0].password === undefined && importedMd[0].url === undefined,
+  'Markdown import strips stale account fields');
+// And normalize() itself (used when loading from localStorage) cleans stale fields.
+assert(api.normalize(dirty).username === undefined, 'normalize() strips stale fields on load');
+
 console.log('\n== empty / invalid ==');
 let threwParse = false;
 try { api.parseImport('garbage nonsense'); } catch (e) { threwParse = e.message === 'parse'; }
