@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.4.0';
+    var VERSION = '1.4.1';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -115,8 +115,8 @@ window.__ModuleLoader__.load({
         importInvalid: 'Invalid backup file', importEmpty: 'No credentials in this file',
         importDetected: 'Detected format', fmtJson: 'JSON', fmtCsv: 'CSV', fmtMd: 'Markdown',
         exportFormat: 'Export format', exportJson: 'JSON backup', exportJsonHint: 'Full fidelity — restores every field exactly (recommended).',
-        exportCsv: 'CSV for Excel / WPS', exportCsvHint: 'Opens directly in spreadsheets. UTF-8 with BOM.',
-        exportMd: 'Markdown', exportMdHint: 'Readable table — easy to view, copy and version.',
+        exportCsv: 'CSV for Excel / WPS', exportCsvHint: 'Chinese headers, readable order, UTF-8 with BOM.',
+        exportMd: 'Markdown cards', exportMdHint: 'One card per entry with Chinese labels — clean and readable.',
         genButton: 'Generate password', genField: 'Generate a password for this field',
         genTitle: 'Password generator', genHint: 'Generates a strong random password using your browser’s cryptographic random source. Nothing is stored or sent anywhere.',
         genLength: 'Length', genUpper: 'Uppercase (A–Z)', genLower: 'Lowercase (a–z)', genDigits: 'Digits (0–9)',
@@ -218,8 +218,8 @@ window.__ModuleLoader__.load({
         importInvalid: '备份文件无效', importEmpty: '文件中没有凭据',
         importDetected: '识别到的格式', fmtJson: 'JSON', fmtCsv: 'CSV', fmtMd: 'Markdown',
         exportFormat: '导出格式', exportJson: 'JSON 备份', exportJsonHint: '完整保真，可精确恢复全部字段（推荐）。',
-        exportCsv: 'CSV（Excel / WPS）', exportCsvHint: '可用表格软件直接打开，UTF-8 BOM 编码。',
-        exportMd: 'Markdown 表格', exportMdHint: '可读表格，方便查看、复制与版本管理。',
+        exportCsv: 'CSV（Excel / WPS）', exportCsvHint: '中文表头、常用列在前，UTF-8 BOM 编码。',
+        exportMd: 'Markdown 卡片', exportMdHint: '每条凭据一张卡片、中文标签，一目了然。',
         genButton: '生成密码', genField: '为此字段生成密码',
         genTitle: '密码生成器', genHint: '使用浏览器的加密随机源生成高强度随机密码，不会存储或上传任何数据。',
         genLength: '长度', genUpper: '大写字母 (A–Z)', genLower: '小写字母 (a–z)', genDigits: '数字 (0–9)',
@@ -654,6 +654,20 @@ window.__ModuleLoader__.load({
     }
     var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content', 'notes', 'createdAt', 'updatedAt'];
 
+    // ---- Human-readable labels ------------------------------------------------
+    // CSV/Markdown use Chinese labels for people; every label maps back to its
+    // exact field name so an exported file still round-trips without data loss.
+    var FIELD_LABELS = {
+      id: 'ID', title: '标题', category: '类型', username: '用户名', password: '密码',
+      url: '网址', provider: '服务商', apiKey: 'API Key', endpoint: '接口地址',
+      expiry: '有效期', content: '内容', notes: '备注', createdAt: '创建时间', updatedAt: '更新时间'
+    };
+    var LABEL_FIELDS = {};
+    Object.keys(FIELD_LABELS).forEach(function (k) { LABEL_FIELDS[FIELD_LABELS[k]] = k; });
+    var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', other: '其他' };
+    var LABEL_CATEGORIES = {};
+    Object.keys(CATEGORY_LABELS).forEach(function (k) { LABEL_CATEGORIES[CATEGORY_LABELS[k]] = k; });
+
     // CSV helpers (RFC 4180): quote fields containing comma / quote / newline,
     // double embedded quotes. The file carries a UTF-8 BOM so Excel/WPS show
     // Chinese characters correctly when opened by double-click.
@@ -661,11 +675,24 @@ window.__ModuleLoader__.load({
       var s = v == null ? '' : String(v);
       return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }
+    function csvDate(v) {
+      if (v == null || v === '') return '';
+      var d = new Date(Number(v));
+      return isNaN(d.getTime()) ? String(v) : d.toISOString();
+    }
+    // CSV shows the fields people actually read first; technical columns
+    // (ID / timestamps) go last. Import maps by header label, so order is safe.
+    var CSV_COLS = ['title', 'category', 'username', 'password', 'url', 'provider',
+      'apiKey', 'endpoint', 'expiry', 'content', 'notes', 'id', 'createdAt', 'updatedAt'];
     function buildCsv(arr) {
-      var lines = [EXPORT_COLS.map(csvEscape).join(',')];
+      var lines = [CSV_COLS.map(function (c) { return csvEscape(FIELD_LABELS[c] || c); }).join(',')];
       arr.forEach(function (e) {
         var n = normalize(e);
-        lines.push(EXPORT_COLS.map(function (c) { return csvEscape(n[c]); }).join(','));
+        lines.push(CSV_COLS.map(function (c) {
+          var v = (c === 'createdAt' || c === 'updatedAt') ? csvDate(n[c]) : n[c];
+          if (c === 'category') v = CATEGORY_LABELS[v] || v;
+          return csvEscape(v);
+        }).join(','));
       });
       return '\uFEFF' + lines.join('\r\n');
     }
@@ -693,7 +720,9 @@ window.__ModuleLoader__.load({
     function parseCsv(text) {
       var rows = csvParse(text);
       if (rows.length < 2) throw new Error('shape');
-      var header = rows[0].map(function (x) { return String(x).trim(); });
+      var rawHeader = rows[0].map(function (x) { return String(x).trim(); });
+      // Accept both the new Chinese header and the legacy English one.
+      var header = rawHeader.map(function (h) { return LABEL_FIELDS[h] || h; });
       if (header.indexOf('title') === -1) throw new Error('shape');
       var out = [];
       for (var r = 1; r < rows.length; r++) {
@@ -701,16 +730,22 @@ window.__ModuleLoader__.load({
         if (cells.length === 1 && !String(cells[0]).trim()) continue;
         var e = {};
         header.forEach(function (h, i2) { if (h) e[h] = cells[i2] != null ? cells[i2] : ''; });
+        if (e.category) e.category = LABEL_CATEGORIES[e.category] || e.category;
         ['createdAt', 'updatedAt'].forEach(function (k) {
-          if (e[k] != null && e[k] !== '' && /^\d+$/.test(String(e[k]))) e[k] = Number(e[k]);
+          var v = e[k];
+          if (v != null && v !== '') {
+            if (/^\d+$/.test(String(v))) e[k] = Number(v);
+            else { var ms = Date.parse(v); if (!isNaN(ms)) e[k] = ms; }
+          }
         });
         out.push(normalize(e));
       }
       return out;
     }
 
-    // Markdown table helpers. Cell text is escaped so pipes, backslashes and
-    // newlines survive a round-trip; on import they are decoded back exactly.
+    // Markdown card helpers. Each credential is a small card with a Chinese
+    // two-column table; an embedded HTML comment keeps the full original data
+    // so import stays lossless even though the visible part is human-friendly.
     function mdEscape(v) {
       return String(v == null ? '' : v)
         .replace(/\\/g, '\\\\').replace(/\|/g, '\\|')
@@ -719,6 +754,7 @@ window.__ModuleLoader__.load({
     function mdDecode(s) {
       var out = '', i = 0;
       while (i < s.length) {
+        if (s.substr(i, 4) === '<br>') { out += '\n'; i += 4; continue; }
         if (s.charAt(i) === '\\' && i + 1 < s.length) {
           var c = s.charAt(i + 1);
           if (c === 'n') { out += '\n'; i += 2; continue; }
@@ -740,45 +776,104 @@ window.__ModuleLoader__.load({
         if (s.charAt(i) === '|') { cells.push(cur); cur = ''; i++; continue; }
         cur += s.charAt(i); i++;
       }
-      // The trailing '|' was stripped above, so the final cell is still in cur.
       cells.push(cur);
-      // buildMarkdown pads each cell with one space on either side of '|';
-      // strip exactly one such padding space, preserving any intentional ones.
       return cells.map(function (x) { return mdDecode(x.replace(/^ /, '').replace(/ $/, '')); });
     }
+    // Cell text for the visible card table: escape pipes/backslashes, and show
+    // real newlines as <br> so multi-line notes stay readable in a table.
+    function mdCell(v) {
+      return String(v == null ? '' : v)
+        .replace(/\\/g, '\\\\').replace(/\|/g, '\\|')
+        .replace(/\r/g, '').replace(/\n/g, '<br>');
+    }
     function buildMarkdown(arr) {
-      var lines = ['# Credential Vault / 凭据保险箱', '', 'Exported: ' + new Date().toISOString(), '',
-        '| ' + EXPORT_COLS.join(' | ') + ' |',
-        '| ' + EXPORT_COLS.map(function () { return '---'; }).join(' | ') + ' |'];
-      arr.forEach(function (e) {
+      var lines = ['# 凭据保险箱 / Credential Vault', '',
+        '导出时间：' + new Date().toISOString() + ' · 共 ' + arr.length + ' 条', '',
+        '> 每条凭据下方的 HTML 注释保存了完整原始数据（含 ID、时间戳等），导入时优先读取以保证无损还原。请勿删除这些注释。', ''];
+      arr.forEach(function (e, i) {
         var n = normalize(e);
-        lines.push('| ' + EXPORT_COLS.map(function (c) { return mdEscape(n[c]); }).join(' | ') + ' |');
+        lines.push('## ' + (i + 1) + '. ' + mdCell(n.title || '(无标题)'));
+        lines.push('');
+        // Encode < and > so the JSON can never terminate the HTML comment early.
+        var data = JSON.stringify(n).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+        lines.push('<!-- cv:' + data + ' -->');
+        lines.push('');
+        lines.push('| 字段 | 内容 |');
+        lines.push('| --- | --- |');
+        EXPORT_COLS.forEach(function (c) {
+          if (c === 'id' || c === 'title' || c === 'createdAt' || c === 'updatedAt') return;
+          var v = n[c];
+          if (v == null || v === '') return;
+          var label = FIELD_LABELS[c] || c;
+          if (c === 'category') v = CATEGORY_LABELS[v] || v;
+          lines.push('| ' + label + ' | ' + mdCell(v) + ' |');
+        });
+        lines.push('');
+        lines.push('---');
+        lines.push('');
       });
       return lines.join('\n');
     }
     function parseMarkdown(text) {
       var lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/);
+      // Preferred path: the embedded <!-- cv:{...} --> comment is lossless.
+      var fromComment = [];
+      lines.forEach(function (line) {
+        var m = /<!--\s*cv:(\{[\s\S]*?\})\s*-->/.exec(line);
+        if (m) { try { fromComment.push(normalize(JSON.parse(m[1]))); } catch (e) {} }
+      });
+      if (fromComment.length) return fromComment;
+
+      // Legacy wide table from earlier exports: keep supporting old files.
       var hIdx = -1;
       for (var i = 0; i < lines.length - 1; i++) {
         if (/^\s*\|/.test(lines[i]) && /title/.test(lines[i]) &&
             /^\s*\|/.test(lines[i + 1]) && /-/.test(lines[i + 1])) { hIdx = i; break; }
       }
-      if (hIdx < 0) throw new Error('shape');
-      var header = mdSplitRow(lines[hIdx]);
-      if (header.indexOf('title') === -1) throw new Error('shape');
-      var out = [];
-      for (var r = hIdx + 2; r < lines.length; r++) {
-        var line = lines[r];
-        if (!/^\s*\|/.test(line)) continue;
-        var cells = mdSplitRow(line);
-        var e = {};
-        header.forEach(function (h, i2) { if (h) e[h] = cells[i2] != null ? cells[i2] : ''; });
-        ['createdAt', 'updatedAt'].forEach(function (k) {
-          if (e[k] != null && e[k] !== '' && /^\d+$/.test(String(e[k]))) e[k] = Number(e[k]);
-        });
-        out.push(normalize(e));
+      if (hIdx >= 0) {
+        var header = mdSplitRow(lines[hIdx]).map(function (h) { return LABEL_FIELDS[h] || h; });
+        if (header.indexOf('title') !== -1) {
+          var out = [];
+          for (var r = hIdx + 2; r < lines.length; r++) {
+            var line = lines[r];
+            if (!/^\s*\|/.test(line)) continue;
+            var cells = mdSplitRow(line);
+            var e = {};
+            header.forEach(function (h, i2) { if (h) e[h] = cells[i2] != null ? cells[i2] : ''; });
+            ['createdAt', 'updatedAt'].forEach(function (k) {
+              if (e[k] != null && e[k] !== '' && /^\d+$/.test(String(e[k]))) e[k] = Number(e[k]);
+            });
+            out.push(normalize(e));
+          }
+          return out;
+        }
       }
-      return out;
+
+      // Fallback: hand-edited cards whose comment was removed — read 字段/内容 tables.
+      var cards = [], curCard = null, inTable = false;
+      lines.forEach(function (line) {
+        var h = /^##\s+(?:\d+\.\s*)?(.*)$/.exec(line);
+        if (h) {
+          curCard = { title: h[1].trim() === '(无标题)' ? '' : h[1].trim(), fields: {} };
+          cards.push(curCard); inTable = false; return;
+        }
+        if (!curCard) return;
+        if (/^\|\s*字段\s*\|\s*内容\s*\|?\s*$/.test(line)) { inTable = true; return; }
+        if (inTable && /^\s*\|/.test(line)) {
+          var cells = mdSplitRow(line);
+          if (cells.length >= 2 && !/^-+$/.test(cells[0].replace(/\s/g, ''))) {
+            var key = LABEL_FIELDS[cells[0].trim()] || cells[0].trim();
+            curCard.fields[key] = cells.slice(1).join(' ');
+          }
+        } else if (!line.trim()) { inTable = false; }
+      });
+      return cards.map(function (c, i) {
+        var e = { id: 'import-' + Date.now() + '-' + i, title: c.title };
+        Object.keys(c.fields).forEach(function (k) {
+          e[k] = k === 'category' ? (LABEL_CATEGORIES[c.fields[k]] || c.fields[k]) : c.fields[k];
+        });
+        return normalize(e);
+      });
     }
 
     // Auto-detect the format and return { entries, fmt } or throw a known error.
@@ -787,12 +882,15 @@ window.__ModuleLoader__.load({
       var t = s.trim();
       if (!t) throw new Error('empty');
       if (t.charAt(0) === '{' || t.charAt(0) === '[') return { entries: parseBackup(t), fmt: 'json' };
+      if (/<!--\s*cv:/.test(s) || /\|\s*字段\s*\|/.test(s)) return { entries: parseMarkdown(t), fmt: 'md' };
       var lines = t.split(/\r?\n/);
       for (var li = 0; li < lines.length; li++) {
         if (/^\s*\|/.test(lines[li]) && /title/.test(lines[li])) return { entries: parseMarkdown(t), fmt: 'md' };
       }
       var first = lines[0] || '';
-      if (first.indexOf(',') !== -1 && /\bid\b/.test(first) && /title/.test(first)) return { entries: parseCsv(t), fmt: 'csv' };
+      if (first.indexOf(',') !== -1 &&
+          (/\bid\b/.test(first) || /ID/.test(first)) &&
+          (/title/.test(first) || /标题/.test(first))) return { entries: parseCsv(t), fmt: 'csv' };
       throw new Error('parse');
     }
     function exportBackup(arr) {

@@ -72,7 +72,7 @@ dsh plugin --profile desktop why @mysterycode-liwen/dsh-credential-vault
 - **密码生成器**：在账号密码字段旁点「⚙ 生成」，用加密安全随机数（Web Crypto）生成强密码，可设置长度与字符类型、避开易混淆字符，并实时显示强度；可直接填入表单或复制。（仅账号密码类提供，API Key / 其他类不显示）
 - **健康审计**：点「🛡 健康审计」扫描全部凭据，列出弱密码 / 空密钥、重复使用、已过期 / 即将到期等问题并按严重程度排序，点击条目可直接跳转编辑。
 - 登录网址 / Base URL 字段旁提供「访问」按钮，默认用 DeepSeek Harness 内置浏览器打开。
-- 导入 / 导出：可把全部凭据导出为 **JSON 备份 / CSV（Excel、WPS 可直接打开）/ Markdown 表格**三种格式，或从这三种格式的文件恢复；导入时自动识别格式，并可选「合并（跳过重复 ID）」或「替换全部」。JSON 保留全部字段，CSV 与 Markdown 便于查看、编辑和版本管理。
+- 导入 / 导出：可把全部凭据导出为 **JSON 备份 / CSV（Excel、WPS 可直接打开）/ Markdown 卡片**三种格式，或从这三种格式的文件恢复；导入时自动识别格式，并可选「合并（跳过重复 ID）」或「替换全部」。JSON 保留全部字段；CSV 用中文表头、常用列在前；Markdown 每条凭据一张中文卡片，方便阅读。三种格式均可无损导回。
 - 设置页：访问密码开关、设置 / 修改密码、密保问题重置、闲置自动锁定（可开关、可选时长）、插件版本与检查更新。
 
 ## Agent 工具 / Agent tool
@@ -111,9 +111,9 @@ Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理�
 
 **导出该选哪种格式？Excel 打开 CSV 会乱码吗？**
 - **JSON**：字段最完整，换机器 / 完整备份首选。
-- **CSV**：带 UTF-8 BOM，Excel / WPS 双击即可正确显示中文；适合表格查看与批量编辑。
-- **Markdown**：可读表格，方便贴到文档或做版本管理。
-导入时会自动识别这三种格式，无需手动选择。
+- **CSV**：带 UTF-8 BOM，Excel / WPS 双击即可正确显示中文；中文表头、常用列在前，ID / 时间戳等放在最后，适合表格查看与批量编辑。
+- **Markdown**：每条凭据一张卡片、中文标签两列表，空字段自动省略，方便阅读、贴到文档或做版本管理；完整数据以 HTML 注释内嵌，导入时无损还原。
+导入时会自动识别这三种格式（也兼容旧版英文表头的 CSV 与宽表格 Markdown），无需手动选择。
 
 **支持多设备同步吗？**
 不支持，也不打算支持——本插件的定位就是「不上云的本机保险箱」。
@@ -122,6 +122,13 @@ Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理�
 不是。那是另一个作者的包。本项目只发布在 `@mysterycode-liwen/dsh-credential-vault` 这个 scope 下。
 
 ## 更新日志 / Changelog
+
+### 1.4.1 — 2026-11-22
+
+- **可读性改进**：Markdown 导出由超宽表格改为每条凭据一张卡片、中文标签两列表、空字段省略、类型显示为「账号 / API Key / 其他」，一目了然。
+- CSV 导出改为中文表头、常用列在前，类型中文化，时间戳转为易读的 ISO 格式。
+- 两种格式在保持可读的同时仍可无损导回（Markdown 以 HTML 注释内嵌完整数据）；导入兼容旧版英文表头 CSV 与宽表格 Markdown。
+- 自动识别逻辑同步更新，新增「无注释的手改卡片」回退解析。
 
 ### 1.4.0 — 2026-11-22
 
@@ -148,7 +155,7 @@ Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理�
 npm run check        # 发布前自检：client.js 的模块 id 与 cordis.patch.yml 的 name 必须等于包名
 npm pack --dry-run   # 核对实际打包的文件清单
 npm publish          # publishConfig.access = public；会先自动跑一次 npm run check，不一致则中止
-git tag v1.4.0 && git push --tags
+git tag v1.4.1 && git push --tags
 ```
 
 `client.js` 里 `window.__ModuleLoader__.load({ id })` 的 `id` **必须等于 `package.json` 的 `name`**：DSH 按包名去浏览器模块表里查找，不一致时浏览器端不会挂载，表现为侧边栏入口与设置页整块消失（Host 端仍然正常）。改包名或改 scope 时，三处要同步：`package.json` 的 `name`、`client.js` 的 `id`、`cordis.patch.yml` 的 `name`。
