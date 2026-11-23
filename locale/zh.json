@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "凭据保险箱",
-    "description": "在侧边栏集中保存与管理账号、密码和 API Key。"
+    "description": "本机集中管理账号、密码和 API Key。明文只留浏览器，模型仅见元数据，不落盘。"
   }
 }

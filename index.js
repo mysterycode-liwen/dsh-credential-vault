@@ -6,16 +6,18 @@
  *   1. a loopback-only HTTP surface the browser POSTs its entries to, and
  *   2. an agent tool (`dsh_credential_vault_read`) the model calls to read them.
  *
- * The in-memory snapshot is intentionally tiny: the browser re-syncs on every
- * change and on mount, so it is always the source of truth; the Host just
- * mirrors the last payload.
+ * SECURITY MODEL (hardened):
+ *   - The browser sends a METADATA-ONLY envelope. Secret fields (password /
+ *     apiKey / content) never reach this Host process; plaintext stays in the
+ *     browser's localStorage. Even a malicious full payload is sanitized here.
+ *   - Nothing is persisted to disk. The snapshot lives only in memory and is
+ *     re-synced by the browser on mount / change, so a restart simply starts
+ *     empty until the browser reconnects.
+ *   - Every tool access is recorded in a bounded, in-memory audit log that
+ *     contains no plaintext (GET /audit, same-origin + loopback only).
  *
  * @module dsh-credential-vault
  */
-
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
 
 /** Cordis plugin name. */
 export const name = 'dsh-credential-vault'
@@ -44,7 +46,7 @@ const MAX_LIMIT = 200
 const SUMMARY_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'expiry', 'updatedAt']
 
 /** Current plugin version. Keep in sync with package.json when releasing. */
-const CURRENT_VERSION = '1.2.0'
+const CURRENT_VERSION = '1.4.3'
 
 /** Where update checks read the latest published version from (GitHub Releases latest). */
 const RELEASES_API = 'https://api.github.com/repos/mysterycode-liwen/dsh-credential-vault/releases/latest'
@@ -53,63 +55,41 @@ const UPDATE_CHECK_TIMEOUT_MS = 8000
 const UPDATE_CACHE_MS = 10 * 60 * 1000
 let updateCache = { at: 0, result: null }
 
-/** Last snapshot received from the browser. */
+/** Last metadata-only snapshot received from the browser (never contains secrets). */
 let snapshot = { entries: [], updatedAt: 0 }
 
-/** Resolve DSH home the same way the Harness does: config > $DSH_HOME > ~/.dsh. */
-function resolveHome(configured, env) {
-  const fromEnv = typeof env.DSH_HOME === 'string' && env.DSH_HOME.trim() !== '' ? env.DSH_HOME : undefined
-  const raw = configured !== undefined && configured !== null && configured !== '' ? configured : (fromEnv || join(homedir(), '.dsh'))
-  const expanded = typeof raw === 'string' && raw === '~' ? homedir()
-    : typeof raw === 'string' && (raw.startsWith('~/') || raw.startsWith('~\\')) ? join(homedir(), raw.slice(2))
-      : raw
-  return resolve(expanded)
+/**
+ * Fields mirrored from the browser. Everything else (especially SECRET_FIELDS)
+ * is dropped, so the Host can never hold a plaintext password / key / body.
+ */
+const META_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'url', 'endpoint', 'expiry', 'notes', 'createdAt', 'updatedAt']
+
+/**
+ * Force every incoming entry into a metadata-only shape. Applied defensively on
+ * POST /entries, so even a buggy or hostile client cannot smuggle a secret into
+ * the Host, the tool output, or the audit log.
+ */
+function sanitizeEnvelope(entry) {
+  const out = {}
+  for (const key of META_FIELDS) {
+    const value = entry[key]
+    if (typeof value === 'string' || typeof value === 'number') out[key] = value
+  }
+  // Keep the masked placeholders so the UI shape stays stable for the model.
+  for (const key of SECRET_FIELDS) {
+    if (typeof entry[key] === 'string' && entry[key] !== '') out[key] = MASK
+  }
+  return out
 }
 
-/** Durable store for the mirrored vault, so the tool still works after restart. */
-function createStore(home) {
-  const dir = join(home, 'dsh-credential-vault')
-  const legacyDir = join(home, 'credential-vault')
-  const file = join(dir, 'vault.json')
-  const legacyFile = join(legacyDir, 'vault.json')
-  return {
-    async restore() {
-      try {
-        const parsed = JSON.parse(await readFile(file, 'utf8'))
-        if (parsed && Array.isArray(parsed.entries)) {
-          snapshot = { entries: parsed.entries, updatedAt: Number(parsed.updatedAt) || 0 }
-          return
-        }
-      } catch {
-        // No file at the renamed location yet: fall through to the legacy path.
-      }
-      // One-time migration from the pre-rename store location.
-      try {
-        const parsed = JSON.parse(await readFile(legacyFile, 'utf8'))
-        if (parsed && Array.isArray(parsed.entries)) {
-          snapshot = { entries: parsed.entries, updatedAt: Number(parsed.updatedAt) || 0 }
-          try {
-            await mkdir(dir, { recursive: true })
-            await writeFile(file, JSON.stringify(snapshot), 'utf8')
-          } catch {
-            // Migration write is best-effort; the in-memory snapshot still works.
-          }
-        }
-      } catch {
-        // Nothing to restore: start with an empty snapshot.
-      }
-    },
-    async persist(next) {
-      try {
-        await mkdir(dir, { recursive: true })
-        const tmp = file + '.tmp'
-        await writeFile(tmp, JSON.stringify(next), 'utf8')
-        await rename(tmp, file)
-      } catch {
-        // Persistence is best-effort; the in-memory snapshot still works.
-      }
-    },
-  }
+// --- in-memory access audit (no plaintext, bounded) ------------------------
+
+const MAX_AUDIT = 200
+/** @type {{at:string, tool:string, action:string, entryId?:string, query?:string, count?:number}[]} */
+const auditLog = []
+function recordAudit(event) {
+  auditLog.push(Object.assign({ at: new Date().toISOString() }, event))
+  if (auditLog.length > MAX_AUDIT) auditLog.splice(0, auditLog.length - MAX_AUDIT)
 }
 
 // --- tiny HTTP helpers (self-contained so the bundle stays 7 files) --------
@@ -227,7 +207,7 @@ async function checkForUpdate() {
 
 // --- HTTP surface ----------------------------------------------------------
 
-async function handle(req, res, store) {
+async function handle(req, res) {
   try {
     if (!isLoopback(req)) return fail(res, 403, 'NOT_LOOPBACK')
     if (!isSameOrigin(req)) return fail(res, 403, 'BAD_ORIGIN')
@@ -237,6 +217,8 @@ async function handle(req, res, store) {
     const method = (req.method || 'GET').toUpperCase()
 
     // Browser -> Host: replace the snapshot with the browser's current vault.
+    // Every entry is forced through sanitizeEnvelope(), so secrets never enter
+    // this process even if the browser sends a full (legacy) payload.
     if (pathname === '/entries' && method === 'POST') {
       let body
       try {
@@ -246,28 +228,26 @@ async function handle(req, res, store) {
       }
       const list = body && Array.isArray(body.entries) ? body.entries : null
       if (!list) return fail(res, 400, 'BAD_ENTRIES', 'expected { entries: [] }')
-      // Keep only plain objects, and cap the count defensively.
-      const entries = list.filter((e) => e !== null && typeof e === 'object' && !Array.isArray(e)).slice(0, MAX_ENTRIES)
+      // Keep only plain objects, cap the count, then strip all secret fields.
+      const entries = list
+        .filter((e) => e !== null && typeof e === 'object' && !Array.isArray(e))
+        .slice(0, MAX_ENTRIES)
+        .map(sanitizeEnvelope)
       snapshot = { entries, updatedAt: Date.now() }
-      await store.persist(snapshot)
       return sendJson(res, 200, { ok: true, count: entries.length, truncated: list.length > entries.length })
     }
 
-    // Debug / inspection: return a bounded page of the current snapshot.
+    // Debug / inspection endpoint removed: it used to return a page of the raw
+    // snapshot. It is not needed by the browser and only widened the read
+    // surface. The dsh_credential_vault_read tool is the sanctioned read path.
     if (pathname === '/entries' && method === 'GET') {
-      const url = new URL(req.url || '/', 'http://localhost')
-      const limit = Math.max(1, Math.min(MAX_LIMIT, Number(url.searchParams.get('limit')) || DEFAULT_LIMIT))
-      const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0)
-      const page = snapshot.entries.slice(offset, offset + limit)
-      return sendJson(res, 200, {
-        ok: true,
-        total: snapshot.entries.length,
-        returned: page.length,
-        offset,
-        limit,
-        entries: page,
-        updatedAt: snapshot.updatedAt,
-      })
+      return fail(res, 404, 'NOT_FOUND')
+    }
+
+    // In-memory access audit (same-origin + loopback already enforced above).
+    // Contains no plaintext — only tool names, actions, ids and counts.
+    if (pathname === '/audit' && method === 'GET') {
+      return sendJson(res, 200, { ok: true, total: auditLog.length, events: auditLog.slice() })
     }
 
     // Check GitHub Releases latest for a newer plugin version.
@@ -292,18 +272,15 @@ async function handle(req, res, store) {
 
 // --- tool projection helpers ----------------------------------------------
 
-function projectEntry(entry, revealSecrets, mode) {
+function projectEntry(entry, mode) {
   const keys = mode === 'summary' ? SUMMARY_FIELDS : Object.keys(entry)
   const out = {}
   for (const key of keys) {
     const value = entry[key]
     if (value === null || value === undefined || value === '') continue
-    if (SECRET_FIELDS.includes(key)) {
-      // Secrets never appear in summary mode, whatever revealSecrets says.
-      out[key] = (revealSecrets && mode !== 'summary') ? value : MASK
-    } else {
-      out[key] = value
-    }
+    // Secret fields in the snapshot are already MASK placeholders (the Host
+    // never receives plaintext). Guard here too, defense-in-depth.
+    out[key] = SECRET_FIELDS.includes(key) ? MASK : value
   }
   return out
 }
@@ -322,16 +299,12 @@ function matches(entry, query, category) {
 /**
  * @param {import('@deepseek-ai/cordis').Context} ctx
  */
-export function apply(ctx, rawConfig) {
-  const config = rawConfig !== null && typeof rawConfig === 'object' ? rawConfig : {}
-  const store = createStore(resolveHome(config.dshHome, process.env))
-  void store.restore()
-
+export function apply(ctx) {
   ctx.effect(() => {
     const dispose = ctx.webServer.register({
       kind: 'prefix',
       path: PREFIX,
-      handler: (req, res) => handle(req, res, store),
+      handler: (req, res) => handle(req, res),
     })
     return () => {
       if (typeof dispose === 'function') dispose()
@@ -347,7 +320,7 @@ export function apply(ctx, rawConfig) {
         {
           name: 'dsh_credential_vault_read',
           description:
-            'Read the contents of the user\'s local credential vault (accounts, passwords, API keys, other secrets stored in the sidebar vault panel). Results are paginated: use limit/offset to page through large vaults, or mode="summary" for a lightweight id/title/category list first. By default secret values are masked; set revealSecrets to true (with mode="full") to include the actual passwords / API keys. Use this when the user asks you to look up, list, or use a credential saved in the vault.',
+            'Read metadata about credentials in the user\'s local vault (accounts, API keys, other entries stored in the sidebar vault panel). Results are paginated: use limit/offset to page through large vaults, or mode="summary" for a lightweight id/title/category list first. Secret values (passwords / API keys / text bodies) are ALWAYS masked — plaintext never leaves the browser and cannot be returned by this tool; the revealSecrets parameter is accepted for compatibility but has no effect. Use this to discover which credentials exist; to actually use a secret, ask the user to open the vault panel and copy it.',
           parameters: {
             type: 'object',
             properties: {
@@ -363,7 +336,7 @@ export function apply(ctx, rawConfig) {
               mode: {
                 type: 'string',
                 enum: ['summary', 'full'],
-                description: 'summary = only id/title/category/account/provider/expiry (lightweight, recommended for browsing); full = all fields with secrets masked unless revealSecrets. Defaults to full.',
+                description: 'summary = only id/title/category/account/provider/expiry (lightweight, recommended for browsing); full = all metadata fields (secrets always masked). Defaults to full.',
               },
               limit: {
                 type: 'number',
@@ -375,7 +348,7 @@ export function apply(ctx, rawConfig) {
               },
               revealSecrets: {
                 type: 'boolean',
-                description: 'If true (and mode="full"), include the real password / API key / secret values instead of a masked placeholder. Defaults to false. Ignored in summary mode.',
+                description: 'Deprecated / no-op. Secret values are always masked and are never returned by this tool. Accepted only so older tool calls keep working.',
               },
             },
             additionalProperties: false,
@@ -398,12 +371,14 @@ export function apply(ctx, rawConfig) {
             const query = typeof a.query === 'string' ? a.query : ''
             const category = typeof a.category === 'string' ? a.category : 'all'
             const mode = a.mode === 'summary' ? 'summary' : 'full'
-            const revealSecrets = a.revealSecrets === true
+            // revealSecrets is intentionally ignored: plaintext never reaches
+            // the Host, so there is nothing to reveal. Kept for compatibility.
             const limit = Math.max(1, Math.min(MAX_LIMIT, Number.isFinite(a.limit) ? Math.floor(a.limit) : DEFAULT_LIMIT))
             const offset = Math.max(0, Number.isFinite(a.offset) ? Math.floor(a.offset) : 0)
             const all = Array.isArray(snapshot.entries) ? snapshot.entries : []
             const filtered = all.filter((e) => matches(e, query, category))
             const page = filtered.slice(offset, offset + limit)
+            recordAudit({ tool: 'dsh_credential_vault_read', action: 'read', category, query: query || undefined, count: page.length })
             return {
               total: filtered.length,
               returned: page.length,
@@ -411,7 +386,7 @@ export function apply(ctx, rawConfig) {
               limit,
               hasMore: offset + page.length < filtered.length,
               updatedAt: snapshot.updatedAt,
-              entries: page.map((e) => projectEntry(e, revealSecrets, mode)),
+              entries: page.map((e) => projectEntry(e, mode)),
             }
           },
         },
@@ -428,7 +403,7 @@ export function apply(ctx, rawConfig) {
         name: 'tool:dsh-credential-vault',
         order: 118,
         text:
-          '凭据保险箱：用户把账号密码、API Key、恢复码等保存在侧边栏「凭据保险箱」里。需要查询这些凭据时用 dsh_credential_vault_read 工具（按 query / category 过滤；数据多时先用 mode="summary" 看标题清单，再用 limit/offset 翻页；默认隐藏密钥，mode="full" 且 revealSecrets:true 才返回明文）。',
+          '凭据保险箱：用户把账号密码、API Key、恢复码等保存在侧边栏「凭据保险箱」里。需要知道有哪些凭据时用 dsh_credential_vault_read 工具（按 query / category 过滤；数据多时先用 mode="summary" 看标题清单，再用 limit/offset 翻页）。出于安全，该工具只返回元数据——密码 / API Key / 文本正文一律显示为 ••••••••，明文只留在浏览器内、不会进入模型上下文，revealSecrets 参数已失效。不要向用户索要明文密钥；需要用到具体密钥时，请让用户自行在侧边栏面板中查看或复制。',
       })
       return () => {}
     }, 'dsh-credential-vault-prompt')

@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.4.2';
+    var VERSION = '1.4.3';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -91,6 +91,8 @@ window.__ModuleLoader__.load({
         resetSubmit: 'Reset password', resetFail: 'That answer does not match.', resetDone: 'Password has been reset. Please unlock again.',
         resetUnavailable: 'No security question is configured. Restore from a backup or clear this browser\'s site data.',
         lockIdle: 'Locked after inactivity',
+        auditTitle: 'Access audit', auditDesc: 'In-memory log of agent reads of your vault metadata. No secrets or plaintext are ever recorded; cleared on restart.',
+        auditView: 'View log', auditLoading: 'Loading…', auditTotal: 'Total events', auditEmpty: 'No accesses recorded yet.', auditFail: 'Audit log is unavailable.',
         updateTitle: 'Plugin updates', updateDesc: 'Check whether a newer version of the dsh-credential-vault plugin is available.',
         updateCurrent: 'Current version', updateLatest: 'Latest version', updateCheck: 'Check for updates',
         updateChecking: 'Checking…', updateAvailable: 'A newer version is available:', updateUpToDate: 'You are up to date.',
@@ -117,6 +119,14 @@ window.__ModuleLoader__.load({
         exportFormat: 'Export format', exportJson: 'JSON backup', exportJsonHint: 'Full fidelity — restores every field exactly (recommended).',
         exportCsv: 'CSV for Excel / WPS', exportCsvHint: 'Chinese headers, readable order, UTF-8 with BOM.',
         exportMd: 'Markdown cards', exportMdHint: 'One card per entry with Chinese labels — clean and readable.',
+        exportEncrypted: 'Encrypted backup (password)', exportEncryptedHint: 'Full backup with secrets, sealed by AES-GCM with a password you choose. Import asks for the same password.',
+        exportEncryptedGo: 'Encrypt & download', exportEncryptedDone: 'Encrypted backup downloaded — keep your password safe, it cannot be recovered.',
+        encPwHint: 'Choose a strong password. It is never stored — losing it means the backup cannot be restored.',
+        encPw: 'Encryption password', encPw2: 'Confirm password', encPwShort: 'Use at least 6 characters.',
+        encPwMismatch: 'Passwords do not match.', encPwRequired: 'Enter the password.',
+        encBusy: 'Working…', encNoCrypto: 'This browser does not support the required encryption (Web Crypto).',
+        encDetected: 'Encrypted backup detected', encImportHint: 'Enter the password used when exporting to decrypt this backup.',
+        encUnlock: 'Decrypt', encWrongPw: 'Wrong password or corrupted file.',
         genButton: 'Generate password', genField: 'Generate a password for this field',
         genTitle: 'Password generator', genHint: 'Generates a strong random password using your browser’s cryptographic random source. Nothing is stored or sent anywhere.',
         genLength: 'Length', genUpper: 'Uppercase (A–Z)', genLower: 'Lowercase (a–z)', genDigits: 'Digits (0–9)',
@@ -194,6 +204,8 @@ window.__ModuleLoader__.load({
         resetSubmit: '重置密码', resetFail: '密保答案不匹配。', resetDone: '密码已重置，请重新解锁。',
         resetUnavailable: '尚未设置密保问题。请从备份恢复，或清除此浏览器的站点数据。',
         lockIdle: '因长时间无操作已锁定',
+        auditTitle: '访问审计', auditDesc: '记录模型读取保险箱元数据的内存日志，不含任何密钥或明文，重启后清空。',
+        auditView: '查看日志', auditLoading: '加载中…', auditTotal: '事件总数', auditEmpty: '暂无访问记录。', auditFail: '访问审计不可用。',
         updateTitle: '插件更新', updateDesc: '检查凭据保险箱插件是否有新版本可用。',
         updateCurrent: '当前版本', updateLatest: '最新版本', updateCheck: '检查更新',
         updateChecking: '检查中…', updateAvailable: '发现新版本：', updateUpToDate: '已是最新版本。',
@@ -220,6 +232,14 @@ window.__ModuleLoader__.load({
         exportFormat: '导出格式', exportJson: 'JSON 备份', exportJsonHint: '完整保真，可精确恢复全部字段（推荐）。',
         exportCsv: 'CSV（Excel / WPS）', exportCsvHint: '中文表头、常用列在前，UTF-8 BOM 编码。',
         exportMd: 'Markdown 卡片', exportMdHint: '每条凭据一张卡片、中文标签，一目了然。',
+        exportEncrypted: '加密备份（密码保护）', exportEncryptedHint: '包含密钥的完整备份，用你设置的密码经 AES-GCM 加密。导入时需输入同一密码。',
+        exportEncryptedGo: '加密并下载', exportEncryptedDone: '加密备份已下载 — 请牢记密码，丢失后无法恢复。',
+        encPwHint: '请设置高强度密码。密码不会被存储 — 丢失后备份将无法恢复。',
+        encPw: '加密密码', encPw2: '确认密码', encPwShort: '密码至少 6 个字符。',
+        encPwMismatch: '两次输入的密码不一致。', encPwRequired: '请输入密码。',
+        encBusy: '处理中…', encNoCrypto: '当前浏览器不支持所需的加密功能（Web Crypto）。',
+        encDetected: '检测到加密备份', encImportHint: '输入导出时设置的密码以解密此备份。',
+        encUnlock: '解密', encWrongPw: '密码错误或文件已损坏。',
         genButton: '生成密码', genField: '为此字段生成密码',
         genTitle: '密码生成器', genHint: '使用浏览器的加密随机源生成高强度随机密码，不会存储或上传任何数据。',
         genLength: '长度', genUpper: '大写字母 (A–Z)', genLower: '小写字母 (a–z)', genDigits: '数字 (0–9)',
@@ -404,6 +424,11 @@ window.__ModuleLoader__.load({
       '.cv-upgrade-status{margin-top:10px;font-size:12.5px;color:var(--cv-t2);line-height:1.6}',
       '.cv-upgrade-status.cv-ok{color:var(--cv-ok)}',
       '.cv-upgrade-status.cv-err{color:var(--cv-err)}',
+      '.cv-audit-list{margin-top:10px;max-height:220px;overflow:auto;border:1px solid var(--cv-b1);border-radius:8px}',
+      '.cv-audit-row{display:flex;gap:10px;padding:7px 10px;border-bottom:1px solid var(--cv-b1);font-size:12px;line-height:1.4}',
+      '.cv-audit-row:last-child{border-bottom:0}',
+      '.cv-audit-time{color:var(--cv-t2);white-space:nowrap;font-variant-numeric:tabular-nums}',
+      '.cv-audit-detail{color:var(--cv-t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.cv-switch-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--cv-b1)}',
       '.cv-switch-row:first-of-type{border-top:none}',
       '.cv-switch-label{font-size:13.5px;font-weight:550}',
@@ -418,6 +443,7 @@ window.__ModuleLoader__.load({
       '.cv-note-err{background:rgba(239,68,68,.12);color:var(--cv-err);border:1px solid rgba(239,68,68,.4)}',
       '@keyframes cv-note-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}',
       '.cv-field-error{color:var(--cv-err);font-size:12px;margin-top:2px}',
+      '.cv-enc-fields{display:flex;flex-direction:column;gap:8px;margin:14px 22px 4px;padding:13px;border-radius:9px;background:var(--cv-l1);border:1px solid var(--cv-b1)}',
       '.cv-settings-fields{display:flex;flex-direction:column;gap:12px;margin-top:12px}',
       // Password generator
       '.cv-gen-secret{display:flex;gap:6px;align-items:stretch}',
@@ -486,11 +512,27 @@ window.__ModuleLoader__.load({
       try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch (e) {}
       syncToHost(arr);
     }
-    // Mirror the vault to the Host so the Harness/Agent can read it via the
-    // dsh_credential_vault_read tool. Fire-and-forget: the browser stays usable
-    // even if the Host route is unavailable; localStorage is still authoritative.
+    // Mirror only METADATA to the Host so the Harness/Agent can discover which
+    // credentials exist via dsh_credential_vault_read. Plaintext secrets stay in
+    // this browser's localStorage and are NEVER sent to the Host process. The
+    // Host independently re-sanitizes every entry, so this is defense in depth.
+    // Fire-and-forget: the browser stays usable even if the Host route is down.
     // Large vaults: DEBOUNCE so a burst of edits results in one POST, not dozens
     // of multi-megabyte payloads. A trailing timer always flushes the latest data.
+    var MIRROR_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'url', 'endpoint', 'expiry', 'notes', 'createdAt', 'updatedAt'];
+    var MIRROR_SECRETS = ['password', 'apiKey', 'content'];
+    function toEnvelope(entry) {
+      var out = {};
+      MIRROR_FIELDS.forEach(function (k) {
+        var v = entry[k];
+        if (typeof v === 'string' || typeof v === 'number') out[k] = v;
+      });
+      // Placeholder only — the real value never leaves this browser.
+      MIRROR_SECRETS.forEach(function (k) {
+        if (typeof entry[k] === 'string' && entry[k] !== '') out[k] = MASK;
+      });
+      return out;
+    }
     var syncTimer = null;
     var SYNC_DELAY = 400;
     function syncToHost(arr, immediate) {
@@ -498,11 +540,12 @@ window.__ModuleLoader__.load({
       function send() {
         syncTimer = null;
         try {
+          var envelope = arr.map(toEnvelope);
           window.fetch(API + 'entries', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'content-type': 'application/json', accept: 'application/json' },
-            body: JSON.stringify({ entries: arr })
+            body: JSON.stringify({ entries: envelope })
           }).catch(function () {});
         } catch (e) {}
       }
@@ -926,15 +969,112 @@ window.__ModuleLoader__.load({
       if (fmt === 'md') return downloadText(buildMarkdown(arr), 'text/markdown;charset=utf-8', '凭据保险箱-' + stampNow() + '.md');
       return exportBackup(arr);
     }
+    // Encrypted export: full backup (secrets included) sealed with a password.
+    // Async because key derivation is Web Crypto. Resolves true on download.
+    function exportEncrypted(arr, password) {
+      if (!arr || arr.length === 0) return Promise.resolve(false);
+      return encryptBackup(arr, password).then(function (envelope) {
+        return downloadText(JSON.stringify(envelope, null, 2), 'application/json;charset=utf-8',
+          '凭据保险箱-加密-' + stampNow() + '.vault.json');
+      });
+    }
     // Returns entries array or throws a recognisable error (JSON backups only).
     function parseBackup(text) {
       var data;
       try { data = JSON.parse(text); } catch (e) { throw new Error('parse'); }
+      // An encrypted envelope is not a plain backup — surface a clear signal so
+      // the import UI can prompt for the password instead of treating it as data.
+      if (data && data.format === ENC_FORMAT) throw new Error('ENCRYPTED');
       var arr = null;
       if (data && Array.isArray(data.entries)) arr = data.entries;
       else if (Array.isArray(data)) arr = data; // tolerate a bare array
       if (!arr) throw new Error('shape');
       return arr.filter(function (e) { return e && typeof e === 'object'; }).map(normalize);
+    }
+
+    // ---- Encrypted backup (PBKDF2 + AES-GCM, Web Crypto) ------------------
+    // The whole plaintext backup (secrets included) is encrypted with a key
+    // derived from a user-supplied password. Nothing about the password or the
+    // plaintext is stored in this file; losing the password means losing the
+    // backup. Uses only platform Web Crypto — no third-party libraries.
+    var ENC_FORMAT = 'dsh-credential-vault-encrypted';
+    var ENC_VERSION = 1;
+    var KDF_ITERATIONS = 210000;
+    function bytesToB64(bytes) {
+      var out = '';
+      var chunk = 0x8000;
+      for (var i = 0; i < bytes.length; i += chunk) {
+        var part = Array.prototype.slice.call(bytes, i, Math.min(i + chunk, bytes.length));
+        out += String.fromCharCode.apply(null, part);
+      }
+      return btoa(out);
+    }
+    function b64ToBytes(b64) {
+      var s = atob(String(b64));
+      var out = new Uint8Array(s.length);
+      for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+      return out;
+    }
+    function deriveEncKey(password, salt, iterations) {
+      var subtle = window.crypto && window.crypto.subtle;
+      if (!subtle) return Promise.reject(new Error('NO_CRYPTO'));
+      var enc = new TextEncoder();
+      return subtle.importKey('raw', enc.encode(String(password)), 'PBKDF2', false, ['deriveKey'])
+        .then(function (baseKey) {
+          return subtle.deriveKey(
+            { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+            baseKey,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt']
+          );
+        });
+    }
+    // Resolve to a JSON-serialisable encrypted envelope.
+    function encryptBackup(arr, password) {
+      if (!password || !String(password)) return Promise.reject(new Error('EMPTY_PASSWORD'));
+      var subtle = window.crypto && window.crypto.subtle;
+      if (!subtle || !window.crypto.getRandomValues) return Promise.reject(new Error('NO_CRYPTO'));
+      var plaintext = JSON.stringify(buildBackup(arr));
+      var salt = new Uint8Array(16), iv = new Uint8Array(12);
+      window.crypto.getRandomValues(salt);
+      window.crypto.getRandomValues(iv);
+      return deriveEncKey(password, salt, KDF_ITERATIONS).then(function (key) {
+        return subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(plaintext));
+      }).then(function (buf) {
+        return {
+          format: ENC_FORMAT, version: ENC_VERSION, kdf: 'PBKDF2-SHA256',
+          iterations: KDF_ITERATIONS,
+          salt: bytesToB64(salt), iv: bytesToB64(iv), cipherText: bytesToB64(new Uint8Array(buf))
+        };
+      });
+    }
+    // Resolve to an entries array (decrypted + normalised), or reject with a
+    // recognisable error: WRONG_PASSWORD / NOT_ENCRYPTED / NO_CRYPTO.
+    function decryptBackup(envelope, password) {
+      if (!envelope || envelope.format !== ENC_FORMAT) return Promise.reject(new Error('NOT_ENCRYPTED'));
+      if (!password || !String(password)) return Promise.reject(new Error('EMPTY_PASSWORD'));
+      var subtle = window.crypto && window.crypto.subtle;
+      if (!subtle) return Promise.reject(new Error('NO_CRYPTO'));
+      var salt = b64ToBytes(envelope.salt), iv = b64ToBytes(envelope.iv);
+      var cipher = b64ToBytes(envelope.cipherText);
+      var iterations = envelope.iterations || KDF_ITERATIONS;
+      return deriveEncKey(password, salt, iterations).then(function (key) {
+        return subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, cipher);
+      }).then(function (buf) {
+        return parseBackup(new TextDecoder().decode(buf));
+      }).catch(function (e) {
+        if (e && (e.message === 'NOT_ENCRYPTED' || e.message === 'EMPTY_PASSWORD' || e.message === 'NO_CRYPTO')) throw e;
+        throw new Error('WRONG_PASSWORD');
+      });
+    }
+    // Detect an encrypted envelope in raw imported text. Returns the envelope
+    // object or null.
+    function detectEncrypted(text) {
+      try {
+        var data = JSON.parse(String(text || '').replace(/^\uFEFF/, ''));
+        return data && data.format === ENC_FORMAT ? data : null;
+      } catch (e) { return null; }
     }
     // ---- Access-password security store ---------------------------------
     var SEC_KEY = '@local/dsh-credential-vault:security:v1';
@@ -1323,17 +1463,23 @@ window.__ModuleLoader__.load({
       var errState = useState(''), err = errState[0], setErr = errState[1];
       var inputRef = useState({})[0];
       var detectedState = useState(''), detected = detectedState[0], setDetected = detectedState[1];
+      var encState = useState(null), encEnv = encState[0], setEncEnv = encState[1];
+      var encPwState = useState(''), encPw = encPwState[0], setEncPw = encPwState[1];
+      var encBusyState = useState(false), encBusy = encBusyState[0], setEncBusy = encBusyState[1];
 
       function onFile(ev) {
         var f = ev.target.files && ev.target.files[0];
         if (!f) return;
-        setErr(''); setPending(null); setDetected('');
+        setErr(''); setPending(null); setDetected(''); setEncEnv(null); setEncPw('');
         setFileInfo({ name: f.name, size: f.size });
         if (typeof FileReader === 'undefined') { setErr(t('importInvalid')); return; }
         var reader = new FileReader();
         reader.onload = function () {
+          var text = String(reader.result || '');
+          var env = detectEncrypted(text);
+          if (env) { setEncEnv(env); setDetected('enc'); return; }
           try {
-            var res = parseImport(String(reader.result || ''));
+            var res = parseImport(text);
             setPending(res.entries);
             setDetected(res.fmt);
             if (res.entries.length === 0) setErr(t('importEmpty'));
@@ -1341,6 +1487,20 @@ window.__ModuleLoader__.load({
         };
         reader.onerror = function () { setErr(t('importInvalid')); setPending(null); };
         reader.readAsText(f, 'utf-8');
+      }
+      function decrypt() {
+        if (!encEnv) return;
+        if (!encPw) { setErr(t('encPwRequired')); return; }
+        setErr(''); setEncBusy(true);
+        decryptBackup(encEnv, encPw).then(function (arr) {
+          setEncBusy(false);
+          setPending(arr); setEncEnv(null); setEncPw(''); setDetected('json');
+          if (arr.length === 0) setErr(t('importEmpty'));
+        }).catch(function (e) {
+          setEncBusy(false);
+          var m = e && e.message;
+          setErr(m === 'WRONG_PASSWORD' ? t('encWrongPw') : m === 'NO_CRYPTO' ? t('encNoCrypto') : t('importInvalid'));
+        });
       }
       function submit() {
         if (!pending || pending.length === 0) { setErr(t('importEmpty')); return; }
@@ -1360,10 +1520,17 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'cv-btn', onClick: function () { if (inputRef.el) inputRef.el.click(); } },
               fileInfo ? '📄 ' + fileInfo.name : t('import')),
             fileInfo ? h('div', { className: 'cv-import-file' },
-              t('importFound') + '：' + (pending ? pending.length : '…') +
-              (detected ? ' · ' + t('importDetected') + '：' + t('fmt' + detected.charAt(0).toUpperCase() + detected.slice(1)) : '')) : null,
-            h('div', { className: 'cv-form-label' }, t('importMode')),
-            h('div', { className: 'cv-import-modes' },
+              encEnv ? t('encDetected')
+                : t('importFound') + '：' + (pending ? pending.length : '…') +
+                  (detected ? ' · ' + t('importDetected') + '：' + t('fmt' + detected.charAt(0).toUpperCase() + detected.slice(1)) : '')) : null,
+            encEnv ? h('div', { className: 'cv-enc-fields' },
+              h('div', { className: 'cv-card-sub' }, t('encImportHint')),
+              h('input', { type: 'password', className: 'cv-input', placeholder: t('encPw'), value: encPw, autoComplete: 'off',
+                onChange: function (e) { setEncPw(e.target.value); },
+                onKeyDown: function (e) { if (e.key === 'Enter') decrypt(); } })
+            ) : null,
+            encEnv ? null : h('div', { className: 'cv-form-label' }, t('importMode')),
+            encEnv ? null : h('div', { className: 'cv-import-modes' },
               h('label', { className: 'cv-import-opt' },
                 h('input', { type: 'radio', name: 'cv-import-mode', checked: mode === 'merge', onChange: function () { setMode('merge'); } }),
                 h('div', null,
@@ -1383,7 +1550,9 @@ window.__ModuleLoader__.load({
           ),
           h('div', { className: 'cv-modal-foot' },
             h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
-            h('button', { className: 'cv-btn cv-btn-primary', disabled: !pending || pending.length === 0, onClick: submit }, t('importConfirm'))
+            encEnv
+              ? h('button', { className: 'cv-btn cv-btn-primary', disabled: encBusy, onClick: decrypt }, encBusy ? t('encBusy') : t('encUnlock'))
+              : h('button', { className: 'cv-btn cv-btn-primary', disabled: !pending || pending.length === 0, onClick: submit }, t('importConfirm'))
           )
         )
       );
@@ -1391,11 +1560,34 @@ window.__ModuleLoader__.load({
 
     function ExportModal(props) {
       var t = props.t;
+      var encState = useState(false), enc = encState[0], setEnc = encState[1];
+      var pwState = useState(''), pw = pwState[0], setPw = pwState[1];
+      var pw2State = useState(''), pw2 = pw2State[0], setPw2 = pw2State[1];
+      var errState = useState(''), err = errState[0], setErr = errState[1];
+      var busyState = useState(false), busy = busyState[0], setBusy = busyState[1];
       var fmts = [
+        { k: 'enc', name: 'exportEncrypted', hint: 'exportEncryptedHint', icon: '🔐' },
         { k: 'json', name: 'exportJson', hint: 'exportJsonHint', icon: '📦' },
         { k: 'csv', name: 'exportCsv', hint: 'exportCsvHint', icon: '📊' },
         { k: 'md', name: 'exportMd', hint: 'exportMdHint', icon: '📝' }
       ];
+      function pick(f) {
+        if (f.k !== 'enc') { props.onPick(f.k); return; }
+        setErr(''); setEnc(true);
+      }
+      function doEncrypted() {
+        if (!pw || pw.length < 6) { setErr(t('encPwShort')); return; }
+        if (pw !== pw2) { setErr(t('encPwMismatch')); return; }
+        setErr(''); setBusy(true);
+        props.onEncrypted(pw).then(function (ok) {
+          setBusy(false);
+          if (ok) { setPw(''); setPw2(''); props.onDone(); }
+          else setErr(t('exportFail'));
+        }).catch(function (e) {
+          setBusy(false);
+          setErr(e && e.message === 'NO_CRYPTO' ? t('encNoCrypto') : t('exportFail'));
+        });
+      }
       return h('div', { className: 'cv-modal-backdrop', onMouseDown: function (e) { if (e.target === e.currentTarget) props.onCancel(); } },
         h('div', { className: 'cv-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('exportTitle'), tabIndex: -1,
           onKeyDown: function (e) { if (e.key === 'Escape') props.onCancel(); } },
@@ -1404,17 +1596,24 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cv-modal-body' },
             h('div', { className: 'cv-form-label' }, t('exportFormat')),
             h('div', { className: 'cv-import-modes' }, fmts.map(function (f) {
-              return h('button', { type: 'button', key: f.k, className: 'cv-import-opt cv-export-opt', onClick: function () { props.onPick(f.k); } },
+              return h('button', { type: 'button', key: f.k, className: 'cv-import-opt cv-export-opt', onClick: function () { pick(f); } },
                 h('span', { className: 'cv-export-icon' }, f.icon),
                 h('div', null,
                   h('div', { className: 'cv-import-opt-name' }, t(f.name)),
                   h('div', { className: 'cv-import-opt-hint' }, t(f.hint))
                 )
               );
-            }))
+            })),
+            enc ? h('div', { className: 'cv-enc-fields' },
+              h('div', { className: 'cv-card-sub' }, t('encPwHint')),
+              h('input', { type: 'password', className: 'cv-input', placeholder: t('encPw'), value: pw, autoComplete: 'new-password', onChange: function (e) { setPw(e.target.value); } }),
+              h('input', { type: 'password', className: 'cv-input', placeholder: t('encPw2'), value: pw2, autoComplete: 'new-password', onChange: function (e) { setPw2(e.target.value); } })
+            ) : null,
+            err ? h('div', { className: 'cv-field-error', role: 'alert' }, err) : null
           ),
           h('div', { className: 'cv-modal-foot' },
-            h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel'))
+            h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),
+            enc ? h('button', { className: 'cv-btn cv-btn-primary', disabled: busy, onClick: doEncrypted }, busy ? t('encBusy') : t('exportEncryptedGo')) : null
           )
         )
       );
@@ -1485,6 +1684,8 @@ window.__ModuleLoader__.load({
       var upgradingState = useState(false), upgrading = upgradingState[0], setUpgrading = upgradingState[1];
       var upgradeMsgState = useState(null), upgradeMsg = upgradeMsgState[0], setUpgradeMsg = upgradeMsgState[1];
       var upgradeConfirmState = useState(null), upgradeConfirmDlg = upgradeConfirmState[0], setUpgradeConfirmDlg = upgradeConfirmState[1];
+      var auditState = useState(null), auditData = auditState[0], setAudit = auditState[1];
+      var auditLoadingState = useState(false), auditLoading = auditLoadingState[0], setAuditLoading = auditLoadingState[1];
       var pollRef = useRef(null);
       // Inline card messages: shown inside the settings card where the action
       // happened, so feedback lands exactly where the user is looking.
@@ -1499,6 +1700,15 @@ window.__ModuleLoader__.load({
         return function () { if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null; } };
       }, []);
 
+      function fetchAudit() {
+        if (auditLoading) return;
+        setAuditLoading(true);
+        window.fetch(API + 'audit', { credentials: 'same-origin', headers: { accept: 'application/json' } })
+          .then(function (r) { return r.json(); })
+          .then(function (body) { setAudit(body && body.ok === true ? body : { ok: false, events: [], total: 0 }); })
+          .catch(function () { setAudit({ ok: false, events: [], total: 0 }); })
+          .then(function () { setAuditLoading(false); });
+      }
       function checkUpdate() {
         if (checking) return;
         setChecking(true);
@@ -1814,6 +2024,29 @@ window.__ModuleLoader__.load({
             )
           ),
           h('div', { className: 'cv-settings-card' },
+            h('h3', null, t('auditTitle')),
+            h('p', { className: 'cv-card-sub' }, t('auditDesc')),
+            h('div', { className: 'cv-update-row' },
+              h('button', { type: 'button', className: 'cv-btn', disabled: auditLoading, onClick: fetchAudit }, auditLoading ? t('auditLoading') : t('auditView'))
+            ),
+            auditData ? h('div', { style: { marginTop: 10 } },
+              auditData.ok !== true
+                ? h('p', { className: 'cv-card-sub', style: { margin: 0 } }, t('auditFail'))
+                : (auditData.events && auditData.events.length > 0
+                  ? h('div', { className: 'cv-audit-list' }, auditData.events.slice().reverse().map(function (ev, i) {
+                      var detail = ev.tool || ev.action || '-';
+                      if (ev.query) detail += ' · ' + ev.query;
+                      if (typeof ev.count === 'number') detail += ' · ' + ev.count;
+                      return h('div', { className: 'cv-audit-row', key: i },
+                        h('span', { className: 'cv-audit-time' }, String(ev.at || '').replace('T', ' ').replace('Z', '')),
+                        h('span', { className: 'cv-audit-detail' }, detail)
+                      );
+                    }))
+                  : h('p', { className: 'cv-card-sub', style: { margin: 0 } }, t('auditEmpty'))),
+              h('p', { className: 'cv-card-sub', style: { marginTop: 8, marginBottom: 0 } }, t('auditTotal') + '：' + (auditData.total || 0))
+            ) : null
+          ),
+          h('div', { className: 'cv-settings-card' },
             h('h3', null, t('updateTitle')),
             h('p', { className: 'cv-card-sub' }, t('updateDesc')),
             h('div', { className: 'cv-update-row' },
@@ -2106,7 +2339,8 @@ window.__ModuleLoader__.load({
       }
       function pickExport(fmt) {
         setExporting(false);
-        setToast(exportEntries(entries, fmt) ? t('exportDone') : t('exportFail'));
+        var ok = exportEntries(entries, fmt);
+        setToast(ok ? t('exportDone') : t('exportFail'));
       }
       function doImport(incoming, mode) {
         setEntries(function (prev) {
@@ -2225,7 +2459,9 @@ window.__ModuleLoader__.load({
           t: t, onImport: doImport, onCancel: function () { setImporting(false); }
         }) : null,
         exporting ? h(ExportModal, {
-          t: t, onPick: pickExport, onCancel: function () { setExporting(false); }
+          t: t, onPick: pickExport, onCancel: function () { setExporting(false); },
+          onEncrypted: function (pw) { return exportEncrypted(entries, pw); },
+          onDone: function () { setExporting(false); setToast(t('exportEncryptedDone')); }
         }) : null,
         auditing ? h(AuditModal, {
           t: t, entries: entries, onEdit: auditEditEntry, onCancel: function () { setAuditing(false); }

@@ -12,9 +12,13 @@ const code = src.slice(a, b);
 const factory = new Function('window', `
   ${code}
   return { normalize, buildBackup, buildCsv, parseCsv, parseBackup,
-           buildMarkdown, parseMarkdown, parseImport, EXPORT_COLS, FIELD_LABELS };
+           buildMarkdown, parseMarkdown, parseImport, EXPORT_COLS, FIELD_LABELS,
+           encryptBackup, decryptBackup, detectEncrypted, ENC_FORMAT };
 `);
-const api = factory({ localStorage: { getItem() { return null; }, setItem() {} } });
+const api = factory({
+  localStorage: { getItem() { return null; }, setItem() {} },
+  crypto: globalThis.crypto,
+});
 
 const sample = [
   { id: 'id-1', title: 'GitHub', category: 'account', username: 'user@example.com',
@@ -135,6 +139,23 @@ console.log('\n== empty / invalid ==');
 let threwParse = false;
 try { api.parseImport('garbage nonsense'); } catch (e) { threwParse = e.message === 'parse'; }
 assert(threwParse, 'garbage throws parse error');
+
+console.log('\n== encrypted backup round-trip ==');
+// The encryption helpers are async (Web Crypto derived key).
+const password = 'correct horse battery staple';
+const envelope = await api.encryptBackup(normalized, password);
+assert(envelope && envelope.format === api.ENC_FORMAT, 'encrypted envelope has expected format');
+assert(typeof envelope.cipherText === 'string' && envelope.cipherText.length > 0, 'cipherText present');
+assert(JSON.stringify(envelope).indexOf('p@ss') === -1, 'plaintext secret NOT present in encrypted file');
+assert(api.detectEncrypted(JSON.stringify(envelope)) !== null, 'encrypted file auto-detected');
+let parseEncryptedSignalled = false;
+try { api.parseBackup(JSON.stringify(envelope)); } catch (e) { parseEncryptedSignalled = e.message === 'ENCRYPTED'; }
+assert(parseEncryptedSignalled, 'parseBackup signals ENCRYPTED for encrypted files');
+const decrypted = await api.decryptBackup(envelope, password);
+eqEntries(decrypted, normalized, 'encrypted round-trip');
+let wrongPw = false;
+try { await api.decryptBackup(envelope, 'wrong password'); } catch (e) { wrongPw = e.message === 'WRONG_PASSWORD'; }
+assert(wrongPw, 'wrong password rejected with WRONG_PASSWORD');
 
 console.log('\n' + (failures === 0 ? 'ALL PASS' : failures + ' FAILURES'));
 process.exit(failures === 0 ? 0 : 1);

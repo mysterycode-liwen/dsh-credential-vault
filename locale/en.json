@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Credential vault",
-    "description": "Store and manage all your accounts, passwords and API keys from the sidebar."
+    "description": "Store accounts, passwords and API keys locally. Secrets stay in your browser — the agent sees metadata only, nothing is written to disk."
   }
 }
