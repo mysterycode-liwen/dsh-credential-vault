@@ -35,7 +35,7 @@ const MAX_BODY_BYTES = 16 * 1024 * 1024
 const MAX_ENTRIES = 20000
 
 /** Fields that hold secrets; masked by default in tool output. */
-const SECRET_FIELDS = ['password', 'apiKey', 'content']
+const SECRET_FIELDS = ['password', 'apiKey', 'content', 'appSecret', 'token', 'encodingAesKey', 'uploadKey']
 const MASK = '••••••••'
 
 /** Pagination defaults / limits for the read tool. */
@@ -46,7 +46,7 @@ const MAX_LIMIT = 200
 const SUMMARY_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'expiry', 'updatedAt']
 
 /** Current plugin version. Keep in sync with package.json when releasing. */
-const CURRENT_VERSION = '1.4.3'
+const CURRENT_VERSION = '1.5.0'
 
 /** Where update checks read the latest published version from (GitHub Releases latest). */
 const RELEASES_API = 'https://api.github.com/repos/mysterycode-liwen/dsh-credential-vault/releases/latest'
@@ -62,7 +62,8 @@ let snapshot = { entries: [], updatedAt: 0 }
  * Fields mirrored from the browser. Everything else (especially SECRET_FIELDS)
  * is dropped, so the Host can never hold a plaintext password / key / body.
  */
-const META_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'url', 'endpoint', 'expiry', 'notes', 'createdAt', 'updatedAt']
+const META_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'url', 'endpoint', 'expiry',
+  'appId', 'serverUrl', 'domains', 'notes', 'createdAt', 'updatedAt']
 
 /**
  * Force every incoming entry into a metadata-only shape. Applied defensively on
@@ -330,7 +331,7 @@ export function apply(ctx) {
               },
               category: {
                 type: 'string',
-                enum: ['all', 'account', 'apikey', 'other'],
+                enum: ['all', 'account', 'apikey', 'other', 'wechatMp', 'wechatMini'],
                 description: 'Only return entries of this category. Defaults to all.',
               },
               mode: {
@@ -403,7 +404,7 @@ export function apply(ctx) {
         name: 'tool:dsh-credential-vault',
         order: 118,
         text:
-          '凭据保险箱：用户把账号密码、API Key、恢复码等保存在侧边栏「凭据保险箱」里。需要知道有哪些凭据时用 dsh_credential_vault_read 工具（按 query / category 过滤；数据多时先用 mode="summary" 看标题清单，再用 limit/offset 翻页）。出于安全，该工具只返回元数据——密码 / API Key / 文本正文一律显示为 ••••••••，明文只留在浏览器内、不会进入模型上下文，revealSecrets 参数已失效。不要向用户索要明文密钥；需要用到具体密钥时，请让用户自行在侧边栏面板中查看或复制。',
+          '凭据保险箱：用户把账号密码、API Key、微信公众号 / 小程序开发信息、恢复码等保存在侧边栏「凭据保险箱」里。需要知道有哪些凭据时用 dsh_credential_vault_read 工具（按 query / category 过滤，category 可选 account / apikey / other / wechatMp / wechatMini；数据多时先用 mode="summary" 看标题清单，再用 limit/offset 翻页）。出于安全，该工具只返回元数据——密码 / API Key / AppSecret / Token / 上传密钥等一律显示为 ••••••••，明文只留在浏览器内、不会进入模型上下文，revealSecrets 参数已失效。不要向用户索要明文密钥；需要用到具体密钥时，请让用户自行在侧边栏面板中查看或复制。',
       })
       return () => {}
     }, 'dsh-credential-vault-prompt')

@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.4.3';
+    var VERSION = '1.5.0';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -40,6 +40,7 @@ window.__ModuleLoader__.load({
         sort: 'Sort', sortRecent: 'Recently updated', sortTitle: 'Name (A–Z)', sortCategory: 'Type',
         search: 'Search name, account, URL or notes…',
         filterAll: 'All', filterAccount: 'Accounts', filterApikey: 'API keys', filterOther: 'Other',
+        filterWechatMp: 'Official Accounts', filterWechatMini: 'Mini Programs',
         localNotice: 'Stored locally in this browser (localStorage) on this device. Not synced or encrypted — avoid shared / public browsers.',
         show: 'Show', hide: 'Hide', copy: 'Copy', visit: 'Visit', copied: 'Copied to clipboard', copyFail: 'Copy failed — select the text manually',
         visitFail: 'Could not open the browser. Check the URL and try again.',
@@ -49,7 +50,8 @@ window.__ModuleLoader__.load({
         emptyFiltered: 'No matches',
         editorNew: 'New credential', editorEdit: 'Edit credential',
         fTitle: 'Name', fTitlePh: 'e.g. GitHub, Google', fTitlePhApikey: 'e.g. OpenAI, AWS, GitHub PAT', fTitlePhOther: 'e.g. Recovery codes, Wi-Fi, License',
-        fCategory: 'Type',
+        fTitlePhWechatMp: 'e.g. My Official Account', fTitlePhWechatMini: 'e.g. My Mini Program',
+        fCategory: 'Type', formDetails: 'Credentials', moreFields: 'More fields', lessFields: 'Fewer fields',
         fAccount: 'Account / username', fAccountPh: 'user@example.com',
         fPassword: 'Password', fPasswordPh: 'Enter password',
         fUrl: 'Login URL (optional)', fUrlPh: 'https://…',
@@ -59,10 +61,20 @@ window.__ModuleLoader__.load({
         fExpiry: 'Expires on (optional)',
         fContent: 'Content / secret', fContentPh: 'Recovery codes, license key, certificate, PIN…',
         fNotes: 'Notes (optional)', fNotesPh: 'Any extra info…',
+        fAppId: 'AppID', fAppIdPh: 'wx…',
+        fAppSecret: 'AppSecret', fAppSecretPh: 'Application secret',
+        fToken: 'Server Token', fTokenPh: 'Token from server config',
+        fAesKey: 'EncodingAESKey', fAesKeyPh: '43-char message encryption key',
+        fServerUrl: 'Server URL', fServerUrlPh: 'https://… (callback URL)',
+        fUploadKey: 'Code upload key', fUploadKeyPh: 'Private key used to upload mini program code',
+        fDomains: 'Server domains', fDomainsPh: 'request / socket / upload / download domains',
         catAccount: 'Account', catApikey: 'API key', catOther: 'Other',
+        catWechatMp: 'WeChat Official Account', catWechatMini: 'WeChat Mini Program',
         hintAccount: 'For website / app logins — username and password.',
         hintApikey: 'For platform-issued API keys, tokens and endpoints.',
         hintOther: 'For recovery codes, licenses, certificates or any free text.',
+        hintWechatMp: 'For WeChat Official Account developer credentials and server config.',
+        hintWechatMini: 'For WeChat Mini Program developer credentials and upload key.',
         save: 'Save', cancel: 'Cancel', required: 'Please enter a name',
         confirmDelete: 'Delete this credential? This cannot be undone.',
         saved: 'Saved', deleted: 'Deleted', revealAll: 'Reveal all', hideAll: 'Hide all',
@@ -153,6 +165,7 @@ window.__ModuleLoader__.load({
         sort: '排序', sortRecent: '最近更新', sortTitle: '名称（A–Z）', sortCategory: '类型',
         search: '搜索名称、账号、网址或备注…',
         filterAll: '全部', filterAccount: '账号密码', filterApikey: 'API Key', filterOther: '其他',
+        filterWechatMp: '微信公众号', filterWechatMini: '微信小程序',
         localNotice: '数据仅保存在本机浏览器的 localStorage 中，不跨设备同步、不加密，请避免在公用/共享浏览器使用。',
         show: '显示', hide: '隐藏', copy: '复制', visit: '访问', copied: '已复制到剪贴板', copyFail: '复制失败，请手动选择文本',
         visitFail: '无法打开浏览器，请检查网址后重试。',
@@ -162,7 +175,8 @@ window.__ModuleLoader__.load({
         emptyFiltered: '没有匹配项',
         editorNew: '新增凭据', editorEdit: '编辑凭据',
         fTitle: '名称', fTitlePh: '例如：GitHub、Google', fTitlePhApikey: '例如：OpenAI、AWS、GitHub PAT', fTitlePhOther: '例如：恢复码、Wi-Fi、许可证',
-        fCategory: '类型',
+        fTitlePhWechatMp: '例如：我的公众号', fTitlePhWechatMini: '例如：我的小程序',
+        fCategory: '类型', formDetails: '凭据信息', moreFields: '更多字段', lessFields: '收起字段',
         fAccount: '账号 / 用户名', fAccountPh: 'user@example.com',
         fPassword: '密码', fPasswordPh: '输入密码',
         fUrl: '登录网址（可选）', fUrlPh: 'https://…',
@@ -172,10 +186,20 @@ window.__ModuleLoader__.load({
         fExpiry: '到期日期（可选）',
         fContent: '内容 / 密钥', fContentPh: '恢复码、许可证、证书、PIN…',
         fNotes: '备注（可选）', fNotesPh: '其他信息…',
+        fAppId: 'AppID', fAppIdPh: 'wx…',
+        fAppSecret: 'AppSecret', fAppSecretPh: '应用密钥',
+        fToken: '服务器 Token', fTokenPh: '服务器配置里的 Token',
+        fAesKey: 'EncodingAESKey', fAesKeyPh: '43 位消息加解密密钥',
+        fServerUrl: '服务器地址', fServerUrlPh: 'https://…（回调地址）',
+        fUploadKey: '代码上传密钥', fUploadKeyPh: '上传小程序代码用的私钥',
+        fDomains: '服务器域名', fDomainsPh: 'request / socket / upload / download 合法域名',
         catAccount: '账号密码', catApikey: 'API Key', catOther: '其他',
+        catWechatMp: '微信公众号', catWechatMini: '微信小程序',
         hintAccount: '用于保存网站 / 应用的登录账号与密码。',
         hintApikey: '用于保存平台签发的 API Key、令牌与接口地址。',
         hintOther: '用于保存恢复码、许可证、证书等任意文本。',
+        hintWechatMp: '用于保存公众号开发者凭证与服务器配置。',
+        hintWechatMini: '用于保存小程序开发者凭证与代码上传密钥。',
         save: '保存', cancel: '取消', required: '请输入名称',
         confirmDelete: '确定删除这条凭据？此操作不可撤销。',
         saved: '已保存', deleted: '已删除', revealAll: '全部显示', hideAll: '全部隐藏',
@@ -285,17 +309,40 @@ window.__ModuleLoader__.load({
         { key: 'title', label: 'fTitle', ph: 'fTitlePhOther', type: 'text', required: true },
         { key: 'content', label: 'fContent', ph: 'fContentPh', type: 'secretarea', mono: true },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
+      ],
+      wechatMp: [
+        { key: 'title', label: 'fTitle', ph: 'fTitlePhWechatMp', type: 'text', required: true },
+        { key: 'appId', label: 'fAppId', ph: 'fAppIdPh', type: 'text', mono: true },
+        { key: 'appSecret', label: 'fAppSecret', ph: 'fAppSecretPh', type: 'secret', mono: true },
+        { key: 'token', label: 'fToken', ph: 'fTokenPh', type: 'secret', mono: true },
+        { key: 'encodingAesKey', label: 'fAesKey', ph: 'fAesKeyPh', type: 'secret', mono: true },
+        { key: 'serverUrl', label: 'fServerUrl', ph: 'fServerUrlPh', type: 'text', isUrl: true },
+        { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
+      ],
+      wechatMini: [
+        { key: 'title', label: 'fTitle', ph: 'fTitlePhWechatMini', type: 'text', required: true },
+        { key: 'appId', label: 'fAppId', ph: 'fAppIdPh', type: 'text', mono: true },
+        { key: 'appSecret', label: 'fAppSecret', ph: 'fAppSecretPh', type: 'secret', mono: true },
+        { key: 'uploadKey', label: 'fUploadKey', ph: 'fUploadKeyPh', type: 'secretarea', mono: true },
+        { key: 'domains', label: 'fDomains', ph: 'fDomainsPh', type: 'textarea' },
+        { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ]
     };
+    // "other" is always the LAST option — both in the type dropdown and in
+    // the filter chips. Keep it that way when adding new categories.
     var CATEGORIES = [
       { k: 'account', label: 'catAccount', hint: 'hintAccount' },
       { k: 'apikey', label: 'catApikey', hint: 'hintApikey' },
+      { k: 'wechatMp', label: 'catWechatMp', hint: 'hintWechatMp' },
+      { k: 'wechatMini', label: 'catWechatMini', hint: 'hintWechatMini' },
       { k: 'other', label: 'catOther', hint: 'hintOther' }
     ];
     var FILTERS = [
       { k: 'all', label: 'filterAll' },
       { k: 'account', label: 'filterAccount' },
       { k: 'apikey', label: 'filterApikey' },
+      { k: 'wechatMp', label: 'filterWechatMp' },
+      { k: 'wechatMini', label: 'filterWechatMini' },
       { k: 'other', label: 'filterOther' }
     ];
     function schemaOf(cat) { return SCHEMAS[cat] || SCHEMAS.account; }
@@ -305,7 +352,7 @@ window.__ModuleLoader__.load({
     var CSS = [
       '.cv-root{--cv-bg:var(--dsw-alias-bg-base,#fff);--cv-l1:var(--dsw-alias-bg-layer-1,#f6f7f9);--cv-l2:var(--dsw-alias-bg-layer-2,#eceef3);--cv-b1:var(--dsw-alias-border-l1,#e2e5eb);--cv-b2:var(--dsw-alias-border-l2,#c9cfd9);--cv-brand:var(--dsw-alias-brand-primary,#2563eb);--cv-t1:var(--dsw-alias-label-primary,#1d2129);--cv-t2:var(--dsw-alias-label-secondary,#6b7280);--cv-err:var(--dsw-alias-state-error-primary,#dc2626);--cv-ok:var(--dsw-alias-state-success-primary,#16a34a);color:var(--cv-t1);background:var(--cv-bg);font-family:inherit;font-size:14px;min-height:100%;box-sizing:border-box;position:relative}',
       '.cv-root *{box-sizing:border-box}',
-      '.cv-wrap{max-width:940px;margin:0 auto;padding:28px 26px 60px}',
+      '.cv-wrap{max-width:90%;margin:0 auto;padding:28px 26px 60px}',
       '.cv-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}',
       '.cv-head-left{display:flex;align-items:center;gap:14px}',
       '.cv-head-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--cv-l1);border:1px solid var(--cv-b1)}',
@@ -359,6 +406,8 @@ window.__ModuleLoader__.load({
       '.cv-badge-apikey{background:var(--cv-brand);color:var(--cv-bg)}',
       '.cv-badge-account{color:var(--cv-brand)}',
       '.cv-badge-other{background:var(--cv-l2);color:var(--cv-t2)}',
+      '.cv-badge-wechatMp{background:#07c160;color:#fff}',
+      '.cv-badge-wechatMini{background:#10aec2;color:#fff}',
       '.cv-card-title{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.cv-card-actions{display:flex;gap:4px}',
       '.cv-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--cv-t2);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}',
@@ -376,9 +425,9 @@ window.__ModuleLoader__.load({
       '.cv-empty h3{margin:0 0 6px;color:var(--cv-t1);font-size:16px}',
       '.cv-empty p{margin:0;font-size:13px}',
       '.cv-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.2);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:20px}',
-      '.cv-modal{position:sticky;top:50vh;transform:translateY(-50%);width:fit-content;max-width:500px;min-width:320px;max-height:90vh;overflow:auto;background:var(--cv-bg);border:1px solid var(--cv-b1);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);outline:none}',
-      '.cv-modal.cv-modal-editor{min-width:500px;max-width:800px}',
-      '.cv-settings .cv-modal{max-width:100%;min-width:0}',
+      '.cv-modal{position:sticky;top:50vh;transform:translateY(-50%);width:min(500px,92%);max-width:100%;min-width:0;max-height:90vh;overflow:auto;background:var(--cv-bg);border:1px solid var(--cv-b1);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);outline:none}',
+      '.cv-modal.cv-modal-editor{width:min(560px,96%);min-width:0}',
+      '.cv-settings .cv-modal{width:min(100%,800px);max-width:100%;min-width:0}',
       // Sidebar panel only: modals are positioned relative to the panel itself
       // (flex-centered inside .cv-root) — the settings-page sticky float is untouched.
       '.cv-panelroot>.cv-modal-backdrop{align-items:center}',
@@ -387,11 +436,20 @@ window.__ModuleLoader__.load({
       '.cv-modal-head h2{margin:0;font-size:17px;font-weight:650}',
       '.cv-modal-hint{margin:5px 22px 0;padding:8px 11px;border-radius:8px;background:var(--cv-l1);border:1px solid var(--cv-b1);color:var(--cv-t2);font-size:12px;line-height:1.5}',
       '.cv-modal-body{padding:14px 22px 6px;display:flex;flex-direction:column;gap:12px}',
-      '.cv-form-row{display:flex;flex-direction:column;gap:5px}',
-      '.cv-form-label{font-size:12px;color:var(--cv-t2)}',
-      '.cv-input{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1);font-size:13px;outline:none;font-family:inherit}',
+      // Editor form: one field per row for a clean, roomy layout.
+      '.cv-form-body{display:grid;grid-template-columns:1fr;gap:16px;padding:20px 24px 12px}',
+      '.cv-form-body .cv-row-full{grid-column:1 / -1}',
+      '.cv-form-body .cv-form-row{gap:8px}',
+      '.cv-form-row{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:100%}',
+      '.cv-form-label{font-size:12px;color:var(--cv-t2);font-weight:600;letter-spacing:.02em}',
+      '.cv-form-label .cv-req{color:var(--cv-err);margin-left:2px}',
+      '.cv-form-sep{grid-column:1 / -1;display:flex;align-items:center;gap:10px;margin:4px 0 0;color:var(--cv-t2);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase}',
+      '.cv-form-sep:after{content:"";flex:1;height:1px;background:var(--cv-b1)}',
+      '.cv-more-btn{grid-column:1 / -1;align-self:start;display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:1px dashed var(--cv-b2);border-radius:8px;background:transparent;color:var(--cv-t2);font-size:12px;font-family:inherit;cursor:pointer}',
+      '.cv-more-btn:hover{border-color:var(--cv-brand);color:var(--cv-brand)}',
+      '.cv-input{width:100%;max-width:100%;min-width:0;padding:9px 11px;border-radius:9px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1);font-size:13px;outline:none;font-family:inherit;box-sizing:border-box}',
       '.cv-input:focus{border-color:var(--cv-brand)}',
-      '.cv-textarea{min-height:64px;resize:vertical}',
+      '.cv-textarea{min-height:64px;max-width:100%;resize:vertical;overflow-wrap:anywhere}',
       '.cv-secret-input{display:flex;gap:6px;align-items:stretch}',
       '.cv-secret-input .cv-input{flex:1;min-width:0}',
       '.cv-secret-toggle{flex:none;display:inline-flex;align-items:center;justify-content:center;padding:0 13px;border:1px solid var(--cv-b1);border-radius:9px;background:var(--cv-l1);color:var(--cv-t2);font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap}',
@@ -412,7 +470,7 @@ window.__ModuleLoader__.load({
       '.cv-link{background:none;border:none;padding:0;color:var(--cv-brand);font-size:12.5px;cursor:pointer;text-decoration:underline;font-family:inherit}',
       '.cv-link:hover{opacity:.8}',
       '.cv-lock-foot{margin-top:16px;color:var(--cv-t2);font-size:11px;line-height:1.5}',
-      '.cv-settings{max-width:820px;margin:0 auto;padding:28px 26px 60px;position:relative}',
+      '.cv-settings{max-width:90%;margin:0 auto;padding:28px 26px 60px;position:relative}',
       '.cv-settings-head{margin-bottom:8px}',
       '.cv-settings-head h2{margin:0;font-size:18px;font-weight:650}',
       '.cv-settings-head p{margin:5px 0 0;color:var(--cv-t2);font-size:13px;line-height:1.5}',
@@ -519,8 +577,9 @@ window.__ModuleLoader__.load({
     // Fire-and-forget: the browser stays usable even if the Host route is down.
     // Large vaults: DEBOUNCE so a burst of edits results in one POST, not dozens
     // of multi-megabyte payloads. A trailing timer always flushes the latest data.
-    var MIRROR_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'url', 'endpoint', 'expiry', 'notes', 'createdAt', 'updatedAt'];
-    var MIRROR_SECRETS = ['password', 'apiKey', 'content'];
+    var MIRROR_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'url', 'endpoint', 'expiry',
+      'appId', 'serverUrl', 'domains', 'notes', 'createdAt', 'updatedAt'];
+    var MIRROR_SECRETS = ['password', 'apiKey', 'content', 'appSecret', 'token', 'encodingAesKey', 'uploadKey'];
     function toEnvelope(entry) {
       var out = {};
       MIRROR_FIELDS.forEach(function (k) {
@@ -695,7 +754,9 @@ window.__ModuleLoader__.load({
       function pad(n) { return n < 10 ? '0' + n : '' + n; }
       return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
     }
-    var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content', 'notes', 'createdAt', 'updatedAt'];
+    var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content',
+      'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
+      'notes', 'createdAt', 'updatedAt'];
 
     // ---- Human-readable labels ------------------------------------------------
     // CSV/Markdown use Chinese labels for people; every label maps back to its
@@ -703,11 +764,14 @@ window.__ModuleLoader__.load({
     var FIELD_LABELS = {
       id: 'ID', title: '标题', category: '类型', username: '用户名', password: '密码',
       url: '网址', provider: '服务商', apiKey: 'API Key', endpoint: '接口地址',
-      expiry: '有效期', content: '内容', notes: '备注', createdAt: '创建时间', updatedAt: '更新时间'
+      expiry: '有效期', content: '内容',
+      appId: 'AppID', appSecret: 'AppSecret', token: '服务器Token', encodingAesKey: 'EncodingAESKey',
+      serverUrl: '服务器地址', uploadKey: '代码上传密钥', domains: '服务器域名',
+      notes: '备注', createdAt: '创建时间', updatedAt: '更新时间'
     };
     var LABEL_FIELDS = {};
     Object.keys(FIELD_LABELS).forEach(function (k) { LABEL_FIELDS[FIELD_LABELS[k]] = k; });
-    var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', other: '其他' };
+    var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', other: '其他', wechatMp: '微信公众号', wechatMini: '微信小程序' };
     var LABEL_CATEGORIES = {};
     Object.keys(CATEGORY_LABELS).forEach(function (k) { LABEL_CATEGORIES[CATEGORY_LABELS[k]] = k; });
     // Only export fields that belong to the entry's type. A record may carry
@@ -716,7 +780,9 @@ window.__ModuleLoader__.load({
     var VISIBLE_FIELDS = {
       account: ['title', 'username', 'password', 'url', 'notes'],
       apikey: ['title', 'provider', 'apiKey', 'endpoint', 'expiry', 'notes'],
-      other: ['title', 'content', 'notes']
+      other: ['title', 'content', 'notes'],
+      wechatMp: ['title', 'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'notes'],
+      wechatMini: ['title', 'appId', 'appSecret', 'uploadKey', 'domains', 'notes']
     };
     function fieldsFor(cat) { return VISIBLE_FIELDS[cat] || VISIBLE_FIELDS.account; }
     // Strip fields that do not belong to the entry's type. Applied inside
@@ -746,7 +812,9 @@ window.__ModuleLoader__.load({
     // CSV shows the fields people actually read first; technical columns
     // (ID / timestamps) go last. Import maps by header label, so order is safe.
     var CSV_COLS = ['title', 'category', 'username', 'password', 'url', 'provider',
-      'apiKey', 'endpoint', 'expiry', 'content', 'notes', 'id', 'createdAt', 'updatedAt'];
+      'apiKey', 'endpoint', 'expiry', 'content',
+      'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
+      'notes', 'id', 'createdAt', 'updatedAt'];
     function buildCsv(arr) {
       var lines = [CSV_COLS.map(function (c) { return csvEscape(FIELD_LABELS[c] || c); }).join(',')];
       arr.forEach(function (e) {
@@ -1209,7 +1277,9 @@ window.__ModuleLoader__.load({
         id: '', title: '', category: cat || 'account',
         username: '', password: '', url: '',
         provider: '', apiKey: '', endpoint: '', expiry: '',
-        content: '', notes: ''
+        content: '',
+        appId: '', appSecret: '', token: '', encodingAesKey: '', serverUrl: '', uploadKey: '', domains: '',
+        notes: ''
       };
     }
 
@@ -1272,7 +1342,8 @@ window.__ModuleLoader__.load({
     function Card(props) {
       var e = props.entry, t = props.t;
       var cat = e.category || 'account';
-      var catLabel = cat === 'apikey' ? t('catApikey') : (cat === 'other' ? t('catOther') : t('catAccount'));
+      var catMeta = CATEGORIES.filter(function (c) { return c.k === cat; })[0];
+      var catLabel = catMeta ? t(catMeta.label) : t('catAccount');
       return h('div', { className: 'cv-card' },
         h('div', { className: 'cv-card-head' },
           h('span', { className: 'cv-badge cv-badge-' + cat }, catLabel),
@@ -1302,6 +1373,14 @@ window.__ModuleLoader__.load({
       var meta = CATEGORIES.filter(function (c) { return c.k === cat; })[0] || CATEGORIES[0];
       var fields = schemaOf(cat);
 
+      // Only the essential fields show by default; the rest fold behind a
+      // "More fields" toggle so short forms stay short and long forms compact.
+      var PRIMARY_KEYS = { title: 1, username: 1, password: 1, apiKey: 1, appId: 1, appSecret: 1, content: 1 };
+      var primary = fields.filter(function (f) { return PRIMARY_KEYS[f.key]; });
+      var secondary = fields.filter(function (f) { return !PRIMARY_KEYS[f.key]; });
+      var hasSecondary = secondary.some(function (f) { return !!d[f.key]; });
+      var moreState = useState(hasSecondary), showMore = moreState[0], setShowMore = moreState[1];
+
       function baseInput(f, extra) {
         return Object.assign({
           className: 'cv-input', value: d[f.key] || '',
@@ -1310,6 +1389,9 @@ window.__ModuleLoader__.load({
           onChange: function (ev) { onChange(f.key, ev.target.value); }
         }, extra || {});
       }
+      // Multiline fields and long values get a full row; everything else pairs up.
+      var WIDE_KEYS = { content: 1, notes: 1, endpoint: 1, serverUrl: 1, uploadKey: 1, domains: 1, encodingAesKey: 1 };
+      function isWide(f) { return f.type === 'textarea' || f.type === 'secretarea' || !!WIDE_KEYS[f.key]; }
       function renderField(f) {
         var control;
         if (f.type === 'text' || f.type === 'date') {
@@ -1332,8 +1414,8 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'cv-secret-toggle', onClick: function () { setShowSecret(!showSecret); } }, showSecret ? t('hide') : t('show'))
           );
         }
-        return h('label', { key: f.key, className: 'cv-form-row' },
-          h('span', { className: 'cv-form-label' }, t(f.label)),
+        return h('label', { key: f.key, className: 'cv-form-row' + (isWide(f) ? ' cv-row-full' : '') },
+          h('span', { className: 'cv-form-label' }, t(f.label), f.required ? h('span', { className: 'cv-req' }, '*') : null),
           control
         );
       }
@@ -1345,14 +1427,24 @@ window.__ModuleLoader__.load({
         },
           h('div', { className: 'cv-modal-head' }, h('h2', null, t(props.titleKey) + ' · ' + t(meta.label))),
           h('div', { className: 'cv-modal-hint' }, t(meta.hint)),
-          h('div', { className: 'cv-modal-body' },
-            h('label', { className: 'cv-form-row' },
+          h('div', { className: 'cv-form-body' },
+            h('label', { className: 'cv-form-row cv-row-full' },
               h('span', { className: 'cv-form-label' }, t('fCategory')),
               h('select', { className: 'cv-input', value: cat, onChange: function (ev) { onChange('category', ev.target.value); } },
                 CATEGORIES.map(function (c) { return h('option', { key: c.k, value: c.k }, t(c.label)); })
               )
             ),
-            fields.map(renderField)
+            h('div', { className: 'cv-form-sep' }, t('formDetails')),
+            primary.map(renderField),
+            secondary.length ? (showMore ? secondary.map(renderField) : null) : null,
+            secondary.length && !showMore ? h('button', {
+              type: 'button', className: 'cv-more-btn',
+              onClick: function () { setShowMore(true); }
+            }, '▾ ' + t('moreFields') + ' (' + secondary.length + ')') : null,
+            secondary.length && showMore ? h('button', {
+              type: 'button', className: 'cv-more-btn',
+              onClick: function () { setShowMore(false); }
+            }, '▴ ' + t('lessFields')) : null
           ),
           h('div', { className: 'cv-modal-foot' },
             h('button', { className: 'cv-btn', onClick: props.onCancel }, t('cancel')),

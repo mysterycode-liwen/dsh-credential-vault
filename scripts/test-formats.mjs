@@ -29,6 +29,14 @@ const sample = [
     notes: 'pipe | backslash \\ quote "', createdAt: 1700000002000, updatedAt: 1700000003000 },
   { id: 'id-3', title: '恢复码', category: 'other', content: '中文,包含"引号"和|竖线\n第二行',
     notes: '多行\n文本', createdAt: 1700000004000, updatedAt: 1700000005000 },
+  { id: 'id-4', title: '我的公众号', category: 'wechatMp', appId: 'wx1234567890abcdef',
+    appSecret: 'mp-secret-abc', token: 'mp-token-xyz', encodingAesKey: 'abcdefghijklmnopqrstuvwxyz0123456789ABCDE',
+    serverUrl: 'https://example.com/wechat/callback', notes: '公众号开发凭证',
+    createdAt: 1700000006000, updatedAt: 1700000007000 },
+  { id: 'id-5', title: '我的小程序', category: 'wechatMini', appId: 'wx0987654321fedcba',
+    appSecret: 'mini-secret-def', uploadKey: '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----',
+    domains: 'request: https://api.example.com\nsocket: wss://ws.example.com', notes: '小程序开发凭证',
+    createdAt: 1700000008000, updatedAt: 1700000009000 },
 ];
 const normalized = sample.map(api.normalize);
 const COLS = api.EXPORT_COLS;
@@ -61,7 +69,7 @@ assert(csv.charCodeAt(0) === 0xFEFF, 'CSV has UTF-8 BOM');
 assert(csv.indexOf('\uFEFF标题') === 0, 'CSV first column is 标题');
 eqEntries(api.parseCsv(csv), normalized, 'csv');
 assert(api.parseImport(csv).fmt === 'csv', 'csv auto-detect');
-assert(api.parseImport(csv).entries.length === 3, 'csv detect entries');
+assert(api.parseImport(csv).entries.length === sample.length, 'csv detect entries');
 
 console.log('\n== Markdown card round-trip ==');
 const md = api.buildMarkdown(normalized);
@@ -69,12 +77,12 @@ assert(md.indexOf('| 字段 | 内容 |') !== -1, 'markdown has 字段/内容 hea
 assert(md.indexOf('<!-- cv:') !== -1, 'markdown embeds lossless comment');
 eqEntries(api.parseMarkdown(md), normalized, 'markdown');
 assert(api.parseImport(md).fmt === 'md', 'markdown auto-detect');
-assert(api.parseImport(md).entries.length === 3, 'markdown detect entries');
+assert(api.parseImport(md).entries.length === sample.length, 'markdown detect entries');
 
 console.log('\n== hand-edited markdown (comment removed) ==');
 const stripped = md.split('\n').filter((l) => l.indexOf('<!-- cv:') === -1).join('\n');
 const fromCards = api.parseMarkdown(stripped);
-assert(fromCards.length === 3, 'cards without comment still parse 3 entries');
+assert(fromCards.length === sample.length, 'cards without comment still parse all entries');
 assert(fromCards[0].title === 'GitHub', 'card title recovered');
 assert(fromCards[0].username === 'user@example.com', 'card username recovered');
 
@@ -134,6 +142,26 @@ assert(importedMd[0].username === undefined && importedMd[0].password === undefi
   'Markdown import strips stale account fields');
 // And normalize() itself (used when loading from localStorage) cleans stale fields.
 assert(api.normalize(dirty).username === undefined, 'normalize() strips stale fields on load');
+
+console.log('\n== WeChat categories round-trip ==');
+const wxMp = api.normalize(sample[3]);
+const wxMini = api.normalize(sample[4]);
+assert(wxMp.appSecret === 'mp-secret-abc' && wxMp.token === 'mp-token-xyz', 'wechatMp keeps its secret fields');
+assert(wxMini.uploadKey && wxMini.uploadKey.indexOf('PRIVATE KEY') !== -1, 'wechatMini keeps upload key');
+assert(wxMp.username === undefined && wxMini.apiKey === undefined, 'wechat types strip unrelated stale fields');
+const wxCsv = api.buildCsv([wxMp, wxMini]);
+const wxCsvHeader = wxCsv.replace(/^\uFEFF/, '').split('\r\n')[0].split(',');
+const wxCsvRowMp = wxCsv.replace(/^\uFEFF/, '').split('\r\n')[1].split(',');
+const wxCol = (row, name) => row[wxCsvHeader.indexOf(name)];
+assert(wxCol(wxCsvRowMp, 'AppID') === 'wx1234567890abcdef', 'wechatMp CSV shows AppID');
+assert(wxCol(wxCsvRowMp, 'AppSecret') === 'mp-secret-abc', 'wechatMp CSV shows AppSecret');
+assert(wxCol(wxCsvRowMp, '用户名') === '' && wxCol(wxCsvRowMp, '密码') === '', 'wechatMp CSV blanks account columns');
+eqEntries(api.parseCsv(wxCsv), [wxMp, wxMini], 'wechat CSV round-trip');
+const wxMd = api.buildMarkdown([wxMp, wxMini]);
+assert(wxMd.indexOf('| 类型 | 微信公众号 |') !== -1, 'wechatMp card label correct');
+assert(wxMd.indexOf('| 类型 | 微信小程序 |') !== -1, 'wechatMini card label correct');
+eqEntries(api.parseMarkdown(wxMd), [wxMp, wxMini], 'wechat Markdown round-trip');
+eqEntries(api.parseBackup(JSON.stringify(api.buildBackup([wxMp, wxMini]))), [wxMp, wxMini], 'wechat JSON round-trip');
 
 console.log('\n== empty / invalid ==');
 let threwParse = false;
