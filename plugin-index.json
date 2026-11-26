@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "title": {
+    "en": "mysterycode-liwen plugins",
+    "zh": "mysterycode-liwen 插件集"
+  },
+  "description": {
+    "en": "Plugin index for mysterycode-liwen's DeepSeek Harness plugins.",
+    "zh": "mysterycode-liwen 的 DeepSeek Harness 插件索引。"
+  },
+  "metadata": {
+    "categories": {
+      "security": {
+        "title": {
+          "en": "Security",
+          "zh": "安全"
+        }
+      }
+    },
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "@mysterycode-liwen/dsh-credential-vault",
+      "title": {
+        "en": "Credential Vault",
+        "zh": "凭据保险箱"
+      },
+      "description": {
+        "en": "Local credential vault for DeepSeek Harness: passwords, API keys, WeChat Official Account / Mini Program developer credentials and recovery codes, with metadata-only agent access, encrypted backup, and single-use approvals.",
+        "zh": "DeepSeek Harness 本地凭据保险箱：账号密码、API Key、微信公众号 / 小程序开发信息与恢复码，支持仅元数据的大模型访问、加密备份与一次性批准。"
+      },
+      "icon": "icon.svg",
+      "author": "mysterycode-liwen",
+      "homepage": "https://github.com/mysterycode-liwen/dsh-credential-vault",
+      "repository": {
+        "url": "https://github.com/mysterycode-liwen/dsh-credential-vault"
+      },
+      "metadata": {
+        "category": "security",
+        "keywords": [
+          "credential-vault",
+          "passwords",
+          "api-keys",
+          "security",
+          "wechat"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "1.5.0",
+          "publishTimestamp": 1795660393,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.4.3",
+          "publishTimestamp": 1795411449,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.4.2",
+          "publishTimestamp": 1795310442,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.4.1",
+          "publishTimestamp": 1795307338,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.4.0",
+          "publishTimestamp": 1795304775,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.3.0",
+          "publishTimestamp": 1795146179,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.2.2",
+          "publishTimestamp": 1795142837,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.2.1",
+          "publishTimestamp": 1795139436,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        }
+      ]
+    }
+  ]
+}
