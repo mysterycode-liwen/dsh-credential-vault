@@ -37,6 +37,9 @@ const sample = [
     appSecret: 'mini-secret-def', uploadKey: '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----',
     domains: 'request: https://api.example.com\nsocket: wss://ws.example.com', notes: '小程序开发凭证',
     createdAt: 1700000008000, updatedAt: 1700000009000 },
+  { id: 'id-6', title: 'Webhook 密钥', category: 'secretKey', keyName: 'webhook-secret',
+    keyValue: 'whsec-abc123-XYZ', notes: '第三方回调签名密钥',
+    createdAt: 1700000010000, updatedAt: 1700000011000 },
 ];
 const normalized = sample.map(api.normalize);
 const COLS = api.EXPORT_COLS;
@@ -142,6 +145,22 @@ assert(importedMd[0].username === undefined && importedMd[0].password === undefi
   'Markdown import strips stale account fields');
 // And normalize() itself (used when loading from localStorage) cleans stale fields.
 assert(api.normalize(dirty).username === undefined, 'normalize() strips stale fields on load');
+
+console.log('\n== Secret key category (通用密钥) ==');
+const sk = api.normalize(sample[5]);
+assert(sk.keyName === 'webhook-secret' && sk.keyValue === 'whsec-abc123-XYZ', 'secretKey keeps its own fields');
+assert(sk.username === undefined && sk.password === undefined && sk.apiKey === undefined, 'secretKey strips unrelated fields');
+const skMd = api.buildMarkdown([sk]);
+assert(skMd.indexOf('| 类型 | 通用密钥 |') !== -1, 'secretKey card shows 类型 = 通用密钥');
+assert(skMd.indexOf('| 密钥名称 | webhook-secret |') !== -1, 'secretKey card shows 密钥名称');
+assert(skMd.indexOf('| 密钥值 | whsec-abc123-XYZ |') !== -1, 'secretKey card shows 密钥值');
+eqEntries(api.parseMarkdown(skMd), [sk], 'secretKey markdown round-trip');
+const skCsv = api.buildCsv([sk]);
+assert(skCsv.indexOf('密钥名称') !== -1 && skCsv.indexOf('密钥值') !== -1, 'secretKey CSV has Chinese headers');
+assert(skCsv.indexOf('密钥名称') < skCsv.indexOf('ID'), 'secretKey CSV keeps technical columns last');
+eqEntries(api.parseCsv(skCsv), [sk], 'secretKey CSV round-trip');
+eqEntries(api.parseBackup(JSON.stringify(api.buildBackup([sk]))), [sk], 'secretKey JSON round-trip');
+assert(api.FIELD_LABELS.keyName === '密钥名称' && api.FIELD_LABELS.keyValue === '密钥值', 'FIELD_LABELS has secretKey fields');
 
 console.log('\n== WeChat categories round-trip ==');
 const wxMp = api.normalize(sample[3]);

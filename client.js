@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.5.0';
+    var VERSION = '1.5.1';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -40,7 +40,7 @@ window.__ModuleLoader__.load({
         sort: 'Sort', sortRecent: 'Recently updated', sortTitle: 'Name (A–Z)', sortCategory: 'Type',
         search: 'Search name, account, URL or notes…',
         filterAll: 'All', filterAccount: 'Accounts', filterApikey: 'API keys', filterOther: 'Other',
-        filterWechatMp: 'Official Accounts', filterWechatMini: 'Mini Programs',
+        filterWechatMp: 'Official Accounts', filterWechatMini: 'Mini Programs', filterSecretKey: 'Secret keys',
         localNotice: 'Stored locally in this browser (localStorage) on this device. Not synced or encrypted — avoid shared / public browsers.',
         show: 'Show', hide: 'Hide', copy: 'Copy', visit: 'Visit', copied: 'Copied to clipboard', copyFail: 'Copy failed — select the text manually',
         visitFail: 'Could not open the browser. Check the URL and try again.',
@@ -51,6 +51,7 @@ window.__ModuleLoader__.load({
         editorNew: 'New credential', editorEdit: 'Edit credential',
         fTitle: 'Name', fTitlePh: 'e.g. GitHub, Google', fTitlePhApikey: 'e.g. OpenAI, AWS, GitHub PAT', fTitlePhOther: 'e.g. Recovery codes, Wi-Fi, License',
         fTitlePhWechatMp: 'e.g. My Official Account', fTitlePhWechatMini: 'e.g. My Mini Program',
+        fTitlePhSecretKey: 'e.g. GitHub PAT, service token',
         fCategory: 'Type', formDetails: 'Credentials', moreFields: 'More fields', lessFields: 'Fewer fields',
         fAccount: 'Account / username', fAccountPh: 'user@example.com',
         fPassword: 'Password', fPasswordPh: 'Enter password',
@@ -68,13 +69,16 @@ window.__ModuleLoader__.load({
         fServerUrl: 'Server URL', fServerUrlPh: 'https://… (callback URL)',
         fUploadKey: 'Code upload key', fUploadKeyPh: 'Private key used to upload mini program code',
         fDomains: 'Server domains', fDomainsPh: 'request / socket / upload / download domains',
+        fKeyName: 'Key name', fKeyNamePh: 'e.g. access token, webhook secret',
+        fKeyValue: 'Secret value', fKeyValuePh: 'Paste the token / secret / password',
         catAccount: 'Account', catApikey: 'API key', catOther: 'Other',
-        catWechatMp: 'WeChat Official Account', catWechatMini: 'WeChat Mini Program',
+        catWechatMp: 'WeChat Official Account', catWechatMini: 'WeChat Mini Program', catSecretKey: 'Secret key',
         hintAccount: 'For website / app logins — username and password.',
         hintApikey: 'For platform-issued API keys, tokens and endpoints.',
         hintOther: 'For recovery codes, licenses, certificates or any free text.',
         hintWechatMp: 'For WeChat Official Account developer credentials and server config.',
         hintWechatMini: 'For WeChat Mini Program developer credentials and upload key.',
+        hintSecretKey: 'For miscellaneous name + value secrets — tokens, secrets, passwords.',
         save: 'Save', cancel: 'Cancel', required: 'Please enter a name',
         confirmDelete: 'Delete this credential? This cannot be undone.',
         saved: 'Saved', deleted: 'Deleted', revealAll: 'Reveal all', hideAll: 'Hide all',
@@ -165,7 +169,7 @@ window.__ModuleLoader__.load({
         sort: '排序', sortRecent: '最近更新', sortTitle: '名称（A–Z）', sortCategory: '类型',
         search: '搜索名称、账号、网址或备注…',
         filterAll: '全部', filterAccount: '账号密码', filterApikey: 'API Key', filterOther: '其他',
-        filterWechatMp: '微信公众号', filterWechatMini: '微信小程序',
+        filterWechatMp: '微信公众号', filterWechatMini: '微信小程序', filterSecretKey: '通用密钥',
         localNotice: '数据仅保存在本机浏览器的 localStorage 中，不跨设备同步、不加密，请避免在公用/共享浏览器使用。',
         show: '显示', hide: '隐藏', copy: '复制', visit: '访问', copied: '已复制到剪贴板', copyFail: '复制失败，请手动选择文本',
         visitFail: '无法打开浏览器，请检查网址后重试。',
@@ -176,6 +180,7 @@ window.__ModuleLoader__.load({
         editorNew: '新增凭据', editorEdit: '编辑凭据',
         fTitle: '名称', fTitlePh: '例如：GitHub、Google', fTitlePhApikey: '例如：OpenAI、AWS、GitHub PAT', fTitlePhOther: '例如：恢复码、Wi-Fi、许可证',
         fTitlePhWechatMp: '例如：我的公众号', fTitlePhWechatMini: '例如：我的小程序',
+        fTitlePhSecretKey: '例如：GitHub PAT、服务令牌',
         fCategory: '类型', formDetails: '凭据信息', moreFields: '更多字段', lessFields: '收起字段',
         fAccount: '账号 / 用户名', fAccountPh: 'user@example.com',
         fPassword: '密码', fPasswordPh: '输入密码',
@@ -193,13 +198,16 @@ window.__ModuleLoader__.load({
         fServerUrl: '服务器地址', fServerUrlPh: 'https://…（回调地址）',
         fUploadKey: '代码上传密钥', fUploadKeyPh: '上传小程序代码用的私钥',
         fDomains: '服务器域名', fDomainsPh: 'request / socket / upload / download 合法域名',
+        fKeyName: '密钥名称', fKeyNamePh: '例如：访问令牌、Webhook 密钥',
+        fKeyValue: '密钥值', fKeyValuePh: '粘贴令牌 / 密钥 / 口令',
         catAccount: '账号密码', catApikey: 'API Key', catOther: '其他',
-        catWechatMp: '微信公众号', catWechatMini: '微信小程序',
+        catWechatMp: '微信公众号', catWechatMini: '微信小程序', catSecretKey: '通用密钥',
         hintAccount: '用于保存网站 / 应用的登录账号与密码。',
         hintApikey: '用于保存平台签发的 API Key、令牌与接口地址。',
         hintOther: '用于保存恢复码、许可证、证书等任意文本。',
         hintWechatMp: '用于保存公众号开发者凭证与服务器配置。',
         hintWechatMini: '用于保存小程序开发者凭证与代码上传密钥。',
+        hintSecretKey: '用于保存零散的名称 + 值型密钥：令牌、密钥、口令等。',
         save: '保存', cancel: '取消', required: '请输入名称',
         confirmDelete: '确定删除这条凭据？此操作不可撤销。',
         saved: '已保存', deleted: '已删除', revealAll: '全部显示', hideAll: '全部隐藏',
@@ -305,6 +313,12 @@ window.__ModuleLoader__.load({
         { key: 'expiry', label: 'fExpiry', type: 'date' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
+      secretKey: [
+        { key: 'title', label: 'fTitle', ph: 'fTitlePhSecretKey', type: 'text', required: true },
+        { key: 'keyName', label: 'fKeyName', ph: 'fKeyNamePh', type: 'text', mono: true },
+        { key: 'keyValue', label: 'fKeyValue', ph: 'fKeyValuePh', type: 'secret', mono: true },
+        { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
+      ],
       other: [
         { key: 'title', label: 'fTitle', ph: 'fTitlePhOther', type: 'text', required: true },
         { key: 'content', label: 'fContent', ph: 'fContentPh', type: 'secretarea', mono: true },
@@ -335,6 +349,7 @@ window.__ModuleLoader__.load({
       { k: 'apikey', label: 'catApikey', hint: 'hintApikey' },
       { k: 'wechatMp', label: 'catWechatMp', hint: 'hintWechatMp' },
       { k: 'wechatMini', label: 'catWechatMini', hint: 'hintWechatMini' },
+      { k: 'secretKey', label: 'catSecretKey', hint: 'hintSecretKey' },
       { k: 'other', label: 'catOther', hint: 'hintOther' }
     ];
     var FILTERS = [
@@ -343,6 +358,7 @@ window.__ModuleLoader__.load({
       { k: 'apikey', label: 'filterApikey' },
       { k: 'wechatMp', label: 'filterWechatMp' },
       { k: 'wechatMini', label: 'filterWechatMini' },
+      { k: 'secretKey', label: 'filterSecretKey' },
       { k: 'other', label: 'filterOther' }
     ];
     function schemaOf(cat) { return SCHEMAS[cat] || SCHEMAS.account; }
@@ -408,6 +424,7 @@ window.__ModuleLoader__.load({
       '.cv-badge-other{background:var(--cv-l2);color:var(--cv-t2)}',
       '.cv-badge-wechatMp{background:#07c160;color:#fff}',
       '.cv-badge-wechatMini{background:#10aec2;color:#fff}',
+      '.cv-badge-secretKey{background:#8b5cf6;color:#fff}',
       '.cv-card-title{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.cv-card-actions{display:flex;gap:4px}',
       '.cv-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--cv-t2);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}',
@@ -545,6 +562,7 @@ window.__ModuleLoader__.load({
       if (n.secret != null && n.password == null && n.apiKey == null && n.content == null) {
         if (n.category === 'apikey') n.apiKey = n.secret;
         else if (n.category === 'other') n.content = n.secret;
+        else if (n.category === 'secretKey') n.keyValue = n.secret;
         else n.password = n.secret;
       }
       if (n.category === 'apikey') {
@@ -577,9 +595,9 @@ window.__ModuleLoader__.load({
     // Fire-and-forget: the browser stays usable even if the Host route is down.
     // Large vaults: DEBOUNCE so a burst of edits results in one POST, not dozens
     // of multi-megabyte payloads. A trailing timer always flushes the latest data.
-    var MIRROR_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'url', 'endpoint', 'expiry',
+    var MIRROR_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'keyName', 'url', 'endpoint', 'expiry',
       'appId', 'serverUrl', 'domains', 'notes', 'createdAt', 'updatedAt'];
-    var MIRROR_SECRETS = ['password', 'apiKey', 'content', 'appSecret', 'token', 'encodingAesKey', 'uploadKey'];
+    var MIRROR_SECRETS = ['password', 'apiKey', 'content', 'appSecret', 'token', 'encodingAesKey', 'uploadKey', 'keyValue'];
     function toEnvelope(entry) {
       var out = {};
       MIRROR_FIELDS.forEach(function (k) {
@@ -682,6 +700,7 @@ window.__ModuleLoader__.load({
       var cat = e.category || 'account';
       if (cat === 'apikey') return String(e.apiKey || '');
       if (cat === 'other') return String(e.content || '');
+      if (cat === 'secretKey') return String(e.keyValue || '');
       return String(e.password || '');
     }
     function runAudit(entries) {
@@ -754,7 +773,7 @@ window.__ModuleLoader__.load({
       function pad(n) { return n < 10 ? '0' + n : '' + n; }
       return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
     }
-    var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content',
+    var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content', 'keyName', 'keyValue',
       'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
       'notes', 'createdAt', 'updatedAt'];
 
@@ -764,14 +783,14 @@ window.__ModuleLoader__.load({
     var FIELD_LABELS = {
       id: 'ID', title: '标题', category: '类型', username: '用户名', password: '密码',
       url: '网址', provider: '服务商', apiKey: 'API Key', endpoint: '接口地址',
-      expiry: '有效期', content: '内容',
+      expiry: '有效期', content: '内容', keyName: '密钥名称', keyValue: '密钥值',
       appId: 'AppID', appSecret: 'AppSecret', token: '服务器Token', encodingAesKey: 'EncodingAESKey',
       serverUrl: '服务器地址', uploadKey: '代码上传密钥', domains: '服务器域名',
       notes: '备注', createdAt: '创建时间', updatedAt: '更新时间'
     };
     var LABEL_FIELDS = {};
     Object.keys(FIELD_LABELS).forEach(function (k) { LABEL_FIELDS[FIELD_LABELS[k]] = k; });
-    var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', other: '其他', wechatMp: '微信公众号', wechatMini: '微信小程序' };
+    var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', secretKey: '通用密钥', other: '其他', wechatMp: '微信公众号', wechatMini: '微信小程序' };
     var LABEL_CATEGORIES = {};
     Object.keys(CATEGORY_LABELS).forEach(function (k) { LABEL_CATEGORIES[CATEGORY_LABELS[k]] = k; });
     // Only export fields that belong to the entry's type. A record may carry
@@ -780,6 +799,7 @@ window.__ModuleLoader__.load({
     var VISIBLE_FIELDS = {
       account: ['title', 'username', 'password', 'url', 'notes'],
       apikey: ['title', 'provider', 'apiKey', 'endpoint', 'expiry', 'notes'],
+      secretKey: ['title', 'keyName', 'keyValue', 'notes'],
       other: ['title', 'content', 'notes'],
       wechatMp: ['title', 'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'notes'],
       wechatMini: ['title', 'appId', 'appSecret', 'uploadKey', 'domains', 'notes']
@@ -812,7 +832,7 @@ window.__ModuleLoader__.load({
     // CSV shows the fields people actually read first; technical columns
     // (ID / timestamps) go last. Import maps by header label, so order is safe.
     var CSV_COLS = ['title', 'category', 'username', 'password', 'url', 'provider',
-      'apiKey', 'endpoint', 'expiry', 'content',
+      'apiKey', 'endpoint', 'expiry', 'content', 'keyName', 'keyValue',
       'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
       'notes', 'id', 'createdAt', 'updatedAt'];
     function buildCsv(arr) {
@@ -1277,7 +1297,7 @@ window.__ModuleLoader__.load({
         id: '', title: '', category: cat || 'account',
         username: '', password: '', url: '',
         provider: '', apiKey: '', endpoint: '', expiry: '',
-        content: '',
+        content: '', keyName: '', keyValue: '',
         appId: '', appSecret: '', token: '', encodingAesKey: '', serverUrl: '', uploadKey: '', domains: '',
         notes: ''
       };
@@ -1375,7 +1395,7 @@ window.__ModuleLoader__.load({
 
       // Only the essential fields show by default; the rest fold behind a
       // "More fields" toggle so short forms stay short and long forms compact.
-      var PRIMARY_KEYS = { title: 1, username: 1, password: 1, apiKey: 1, appId: 1, appSecret: 1, content: 1 };
+      var PRIMARY_KEYS = { title: 1, username: 1, password: 1, apiKey: 1, appId: 1, appSecret: 1, content: 1, keyName: 1, keyValue: 1 };
       var primary = fields.filter(function (f) { return PRIMARY_KEYS[f.key]; });
       var secondary = fields.filter(function (f) { return !PRIMARY_KEYS[f.key]; });
       var hasSecondary = secondary.some(function (f) { return !!d[f.key]; });
