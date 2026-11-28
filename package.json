@@ -38,6 +38,7 @@
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
+    "bridge/*.js",
     "icon.svg",
     "README.md",
     "LICENSE"

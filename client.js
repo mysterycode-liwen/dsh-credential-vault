@@ -627,6 +627,117 @@ window.__ModuleLoader__.load({
       try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch (e) {}
       syncToHost(arr);
     }
+
+    // ---- Cross-plugin encrypted bridge (ECDH P-256 + AES-GCM) ------------
+    // Other plugins (e.g. dsh-mail) need a real secret from the vault. The Host
+    // process only has a metadata snapshot, so the only place that can answer
+    // is this browser client. We publish a same-document bridge object that
+    // speaks an encrypted, one-time-session protocol; nothing here touches the
+    // Host route and nothing persists. Registered on window in apply(); if this
+    // plugin is not installed, the object simply never exists and consumers
+    // detect that via isAvailable() and silently no-op.
+    var BRIDGE_KEY = '@mysterycode-liwen/dsh-credential-vault/bridge/v1';
+    var bridgeSessions = {};   // sessionId -> { key, used, expires }
+    function bridgeB64u(bytes) {
+      var s = '';
+      for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+      return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function bridgeUnb64u(str) {
+      var b = String(str).replace(/-/g, '+').replace(/_/g, '/');
+      while (b.length % 4) b += '=';
+      var bin = atob(b), out = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+    function bridgeEnc(str) { return new TextEncoder().encode(str); }
+    function bridgeDec(bytes) { return new TextDecoder().decode(bytes); }
+    function bridgeDerive(s, priv, peerJwk) {
+      return s.importKey('jwk', peerJwk, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+        .then(function (pub) { return s.deriveBits({ name: 'ECDH', public: pub }, priv, 256); })
+        .then(function (bits) { return s.importKey('raw', bits, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); });
+    }
+    function bridgeSeal(s, key, obj) {
+      var iv = new Uint8Array(12);
+      window.crypto.getRandomValues(iv);
+      return s.encrypt({ name: 'AES-GCM', iv: iv }, key, bridgeEnc(JSON.stringify(obj)))
+        .then(function (ct) {
+          return { iv: bridgeB64u(iv), ciphertext: bridgeB64u(new Uint8Array(ct)) };
+        });
+    }
+    function bridgeOpen(s, key, payload) {
+      if (!payload || typeof payload.iv !== 'string' || typeof payload.ciphertext !== 'string') {
+        return Promise.reject(new Error('BAD_CIPHERTEXT'));
+      }
+      return s.decrypt({ name: 'AES-GCM', iv: bridgeUnb64u(payload.iv) }, key, bridgeUnb64u(payload.ciphertext))
+        .then(function (plain) { return JSON.parse(bridgeDec(new Uint8Array(plain))); });
+    }
+    function newBridge() {
+      var s = (window.crypto && window.crypto.subtle) || null;
+      return {
+        version: 1,
+        hello: function () {
+          if (!s) return Promise.reject(new Error('NO_CRYPTO'));
+          return s.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])
+            .then(function (kp) {
+              var id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+              return s.exportKey('jwk', kp.publicKey).then(function (pubJwk) {
+                bridgeSessions[id] = { keyPair: kp, used: false, expires: Date.now() + 60000 };
+                return { sessionId: id, publicKeyJwk: pubJwk };
+              });
+            });
+        },
+        query: function (req) {
+          if (!s) return Promise.resolve({ error: 'NO_CRYPTO' });
+          if (!req || !req.sessionId || !req.publicKeyJwk) {
+            return Promise.resolve({ error: 'BAD_REQUEST' });
+          }
+          var sess = bridgeSessions[req.sessionId];
+          if (!sess) return Promise.resolve({ error: 'UNKNOWN_SESSION' });
+          if (sess.expires < Date.now()) {
+            delete bridgeSessions[req.sessionId];
+            return Promise.resolve({ error: 'SESSION_EXPIRED' });
+          }
+          if (sess.used) return Promise.resolve({ error: 'SESSION_USED' });
+          // One-time session: consume immediately, even if decryption later fails.
+          sess.used = true;
+          try { delete bridgeSessions[req.sessionId]; } catch (e) {}
+          var sharedKey = null;
+          return bridgeDerive(s, sess.keyPair.privateKey, req.publicKeyJwk)
+            .then(function (key) { sharedKey = key; return bridgeOpen(s, key, req); })
+            .then(function (criteria) {
+              var cat = criteria && criteria.category ? criteria.category : 'all';
+              var title = criteria && typeof criteria.title === 'string' ? criteria.title.toLowerCase() : '';
+              var limit = criteria && criteria.limit ? Math.min(Number(criteria.limit) || 100, 500) : 100;
+              var all = loadEntries();          // REAL entries incl. secrets, from localStorage
+              var SECRET_KEYS = ['password', 'apiKey', 'content', 'appSecret', 'token',
+                'encodingAesKey', 'uploadKey', 'keyValue'];
+              var out = [];
+              for (var i = 0; i < all.length && out.length < limit; i++) {
+                var e = all[i];
+                if (cat !== 'all' && e.category !== cat) continue;
+                if (title && String(e.title || '').toLowerCase().indexOf(title) < 0) continue;
+                var item = {};
+                Object.keys(e).forEach(function (k) { item[k] = e[k]; });
+                // Belt-and-braces: only known secret keys are included; all are
+                // real values because the consumer authenticated with the AES key.
+                SECRET_KEYS.forEach(function (k) {
+                  if (typeof e[k] === 'string') item[k] = e[k];
+                });
+                out.push(item);
+              }
+              return bridgeSeal(s, sharedKey, { entries: out });
+            })
+            .then(function (sealed) { return sealed; })
+            .catch(function () { return { error: 'DECRYPT_FAILED' }; });
+        }
+      };
+    }
+    function registerBridge() {
+      try {
+        if (!window[BRIDGE_KEY]) window[BRIDGE_KEY] = newBridge();
+      } catch (e) {}
+    }
     // Mirror only METADATA to the Host so the Harness/Agent can discover which
     // credentials exist via dsh_credential_vault_read. Plaintext secrets stay in
     // this browser's localStorage and are NEVER sent to the Host process. The
@@ -2756,6 +2867,7 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
+        registerBridge();
         ctxRef = ctx;
         layout = (ctx.get && ctx.get('layout')) || null;
         locale = (ctx.get && ctx.get('locale')) || null;
