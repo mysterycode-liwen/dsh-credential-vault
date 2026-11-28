@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.6.1';
+    var VERSION = '1.7.0';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -62,6 +62,7 @@ window.__ModuleLoader__.load({
         fExpiry: 'Expires on (optional)',
         fContent: 'Content / secret', fContentPh: 'Recovery codes, license key, certificate, PIN…',
         fNotes: 'Notes (optional)', fNotesPh: 'Any extra info…',
+        fAccessPlugins: 'Accessible plugins', fAccessPluginsHint: 'Only these plugins may read this credential through the vault bridge. Default: none (invisible to all plugins).', fAccessNone: 'No plugins', fAccessDshMail: 'Email (dsh-mail)', fAccessOther: 'Other plugin ID…', fAccessOtherPh: 'plugin-id', fAccessAdd: 'Add', fAccessRemove: 'Remove',
         fLinks: 'Linked credentials', linkNone: 'No API Key / Key / Other credentials yet', linkMissing: 'Linked credential no longer exists', linkPlaceholder: 'Select credentials…', linkSearch: 'Search by name…', linkSelected: 'selected', linkNoMatch: 'No matching credentials', linkClear: 'Clear',
         fAppId: 'AppID', fAppIdPh: 'wx…',
         fAppSecret: 'AppSecret', fAppSecretPh: 'Application secret',
@@ -192,6 +193,7 @@ window.__ModuleLoader__.load({
         fExpiry: '到期日期（可选）',
         fContent: '内容 / 密钥', fContentPh: '恢复码、许可证、证书、PIN…',
         fNotes: '备注（可选）', fNotesPh: '其他信息…',
+        fAccessPlugins: '可访问插件', fAccessPluginsHint: '只有这些插件能通过保险箱桥读取本凭据。默认无（对所有插件不可见）。', fAccessNone: '未授权任何插件', fAccessDshMail: '邮箱（dsh-mail）', fAccessOther: '其它插件 ID…', fAccessOtherPh: '插件 ID', fAccessAdd: '添加', fAccessRemove: '移除',
         fLinks: '关联凭据', linkNone: '还没有 API Key / 密钥 / 其他凭据', linkMissing: '关联的凭据已不存在', linkPlaceholder: '选择凭据…', linkSearch: '按名称搜索…', linkSelected: '项已选', linkNoMatch: '没有匹配的凭据', linkClear: '清空',
         fAppId: 'AppID', fAppIdPh: 'wx…',
         fAppSecret: 'AppSecret', fAppSecretPh: '应用密钥',
@@ -306,6 +308,7 @@ window.__ModuleLoader__.load({
         { key: 'password', label: 'fPassword', ph: 'fPasswordPh', type: 'secret', mono: true, generatable: true },
         { key: 'url', label: 'fUrl', ph: 'fUrlPh', type: 'text', isUrl: true },
         { key: 'links', label: 'fLinks', type: 'links' },
+        { key: 'accessPlugins', label: 'fAccessPlugins', type: 'access' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
       apikey: [
@@ -314,17 +317,20 @@ window.__ModuleLoader__.load({
         { key: 'apiKey', label: 'fApiKey', ph: 'fApiKeyPh', type: 'secret', mono: true },
         { key: 'endpoint', label: 'fEndpoint', ph: 'fEndpointPh', type: 'text', mono: true, isUrl: true },
         { key: 'expiry', label: 'fExpiry', type: 'date' },
+        { key: 'accessPlugins', label: 'fAccessPlugins', type: 'access' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
       secretKey: [
         { key: 'title', label: 'fTitle', ph: 'fTitlePhSecretKey', type: 'text', required: true },
         { key: 'keyName', label: 'fKeyName', ph: 'fKeyNamePh', type: 'text', mono: true },
         { key: 'keyValue', label: 'fKeyValue', ph: 'fKeyValuePh', type: 'secret', mono: true },
+        { key: 'accessPlugins', label: 'fAccessPlugins', type: 'access' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
       other: [
         { key: 'title', label: 'fTitle', ph: 'fTitlePhOther', type: 'text', required: true },
         { key: 'content', label: 'fContent', ph: 'fContentPh', type: 'secretarea', mono: true },
+        { key: 'accessPlugins', label: 'fAccessPlugins', type: 'access' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
       wechatMp: [
@@ -334,6 +340,7 @@ window.__ModuleLoader__.load({
         { key: 'token', label: 'fToken', ph: 'fTokenPh', type: 'secret', mono: true },
         { key: 'encodingAesKey', label: 'fAesKey', ph: 'fAesKeyPh', type: 'secret', mono: true },
         { key: 'serverUrl', label: 'fServerUrl', ph: 'fServerUrlPh', type: 'text', isUrl: true },
+        { key: 'accessPlugins', label: 'fAccessPlugins', type: 'access' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
       wechatMini: [
@@ -342,6 +349,7 @@ window.__ModuleLoader__.load({
         { key: 'appSecret', label: 'fAppSecret', ph: 'fAppSecretPh', type: 'secret', mono: true },
         { key: 'uploadKey', label: 'fUploadKey', ph: 'fUploadKeyPh', type: 'secretarea', mono: true },
         { key: 'domains', label: 'fDomains', ph: 'fDomainsPh', type: 'textarea' },
+        { key: 'accessPlugins', label: 'fAccessPlugins', type: 'access' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ]
     };
@@ -453,6 +461,12 @@ window.__ModuleLoader__.load({
       '.cv-link-opt{display:flex;align-items:center;gap:7px;padding:5px 2px;font-size:12.5px;cursor:pointer}',
       '.cv-link-opt:hover{background:var(--cv-l2)}',
       '.cv-link-empty{font-size:12px;color:var(--cv-t2);padding:8px 2px}',
+      '.cv-access-hint{font-size:11.5px;color:var(--cv-t2);margin:2px 0 6px;line-height:1.45}',
+      '.cv-access-chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}',
+      '.cv-access-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 9px;border-radius:999px;background:var(--cv-l2);border:1px solid var(--cv-b1);color:var(--cv-brand);font-size:11.5px}',
+      '.cv-access-x{border:none;background:transparent;color:var(--cv-t2);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}',
+      '.cv-access-add{display:flex;gap:6px;align-items:center;margin-top:6px}',
+      '.cv-access-add select,.cv-access-add input{flex:1;min-width:0;padding:7px 9px;font-size:12.5px;border-radius:8px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1)}',
       '.cv-card-title{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.cv-card-actions{display:flex;gap:4px}',
       '.cv-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--cv-t2);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}',
@@ -608,6 +622,17 @@ window.__ModuleLoader__.load({
       } else {
         delete n.links;
       }
+      // Accessible plugins: array of plugin IDs. Accept arrays, a comma-separated
+      // string (for CSV/MD), or the human-readable "Name(id)" form.
+      if (Array.isArray(n.accessPlugins)) {
+        n.accessPlugins = n.accessPlugins.map(function (x) { return String(x).trim(); }).filter(Boolean);
+      } else if (typeof n.accessPlugins === 'string' && n.accessPlugins.trim()) {
+        n.accessPlugins = n.accessPlugins.split(/[,，、]/).map(function (x) {
+          var m = /[（(]([^()）]+)[)）]/.exec(x); return (m ? m[1] : x).trim();
+        }).filter(Boolean);
+      } else {
+        delete n.accessPlugins;
+      }
       return sanitize(n);
     }
     function loadEntries() {
@@ -709,6 +734,20 @@ window.__ModuleLoader__.load({
               var cat = criteria && criteria.category ? criteria.category : 'all';
               var title = criteria && typeof criteria.title === 'string' ? criteria.title.toLowerCase() : '';
               var limit = criteria && criteria.limit ? Math.min(Number(criteria.limit) || 100, 500) : 100;
+              var callerId = criteria && typeof criteria.callerId === 'string' && criteria.callerId.trim() ? criteria.callerId.trim() : '';
+              var callerAliases = { 'dsh-mail': 1, '@mysterycode-liwen/dsh-mail': 1 };
+              function allowedFor(ap) {
+                if (!callerId) return false;              // anonymous caller -> nothing (default invisible)
+                if (!Array.isArray(ap) || !ap.length) return false; // no grant -> nothing
+                return ap.some(function (id) {
+                  var s = String(id || '').trim();
+                  if (!s) return false;
+                  if (s === callerId) return true;
+                  // treat the mail plugin id and its short alias as equivalent
+                  if (callerAliases[s] && callerAliases[callerId]) return true;
+                  return false;
+                });
+              }
               var all = loadEntries();          // REAL entries incl. secrets, from localStorage
               var SECRET_KEYS = ['password', 'apiKey', 'content', 'appSecret', 'token',
                 'encodingAesKey', 'uploadKey', 'keyValue'];
@@ -717,6 +756,7 @@ window.__ModuleLoader__.load({
                 var e = all[i];
                 if (cat !== 'all' && e.category !== cat) continue;
                 if (title && String(e.title || '').toLowerCase().indexOf(title) < 0) continue;
+                if (!allowedFor(e.accessPlugins)) continue;   // per-credential plugin scope
                 var item = {};
                 Object.keys(e).forEach(function (k) { item[k] = e[k]; });
                 // Belt-and-braces: only known secret keys are included; all are
@@ -746,12 +786,18 @@ window.__ModuleLoader__.load({
     // Large vaults: DEBOUNCE so a burst of edits results in one POST, not dozens
     // of multi-megabyte payloads. A trailing timer always flushes the latest data.
     var MIRROR_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'keyName', 'url', 'endpoint', 'expiry',
-      'appId', 'serverUrl', 'domains', 'notes', 'links', 'createdAt', 'updatedAt'];
+      'appId', 'serverUrl', 'domains', 'notes', 'links', 'accessPlugins', 'createdAt', 'updatedAt'];
     var MIRROR_SECRETS = ['password', 'apiKey', 'content', 'appSecret', 'token', 'encodingAesKey', 'uploadKey', 'keyValue'];
     function toEnvelope(entry) {
       var out = {};
       MIRROR_FIELDS.forEach(function (k) {
         var v = entry[k];
+        // accessPlugins is an array; the Host snapshot keeps it as a plain
+        // comma-joined string so the Host can still see WHO may read a credential.
+        if (k === 'accessPlugins') {
+          if (Array.isArray(v) && v.length) out[k] = v.join(',');
+          return;
+        }
         if (typeof v === 'string' || typeof v === 'number') out[k] = v;
       });
       // Placeholder only — the real value never leaves this browser.
@@ -925,7 +971,7 @@ window.__ModuleLoader__.load({
     }
     var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content', 'keyName', 'keyValue',
       'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
-      'notes', 'links', 'createdAt', 'updatedAt'];
+      'notes', 'links', 'accessPlugins', 'createdAt', 'updatedAt'];
 
     // ---- Human-readable labels ------------------------------------------------
     // CSV/Markdown use Chinese labels for people; every label maps back to its
@@ -936,7 +982,7 @@ window.__ModuleLoader__.load({
       expiry: '有效期', content: '内容', keyName: '密钥名称', keyValue: '密钥值',
       appId: 'AppID', appSecret: 'AppSecret', token: '服务器Token', encodingAesKey: 'EncodingAESKey',
       serverUrl: '服务器地址', uploadKey: '代码上传密钥', domains: '服务器域名',
-      notes: '备注', links: '关联凭据', createdAt: '创建时间', updatedAt: '更新时间'
+      notes: '备注', links: '关联凭据', accessPlugins: '可访问插件', createdAt: '创建时间', updatedAt: '更新时间'
     };
     var LABEL_FIELDS = {};
     Object.keys(FIELD_LABELS).forEach(function (k) { LABEL_FIELDS[FIELD_LABELS[k]] = k; });
@@ -948,12 +994,12 @@ window.__ModuleLoader__.load({
     // stale fields from a past type change (e.g. an API Key with leftover
     // username/password/url); those must not leak into readable exports.
     var VISIBLE_FIELDS = {
-      account: ['title', 'username', 'password', 'url', 'links', 'notes'],
-      apikey: ['title', 'provider', 'apiKey', 'endpoint', 'expiry', 'notes'],
-      secretKey: ['title', 'keyName', 'keyValue', 'notes'],
-      other: ['title', 'content', 'notes'],
-      wechatMp: ['title', 'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'notes'],
-      wechatMini: ['title', 'appId', 'appSecret', 'uploadKey', 'domains', 'notes']
+      account: ['title', 'username', 'password', 'url', 'links', 'notes', 'accessPlugins'],
+      apikey: ['title', 'provider', 'apiKey', 'endpoint', 'expiry', 'notes', 'accessPlugins'],
+      secretKey: ['title', 'keyName', 'keyValue', 'notes', 'accessPlugins'],
+      other: ['title', 'content', 'notes', 'accessPlugins'],
+      wechatMp: ['title', 'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'notes', 'accessPlugins'],
+      wechatMini: ['title', 'appId', 'appSecret', 'uploadKey', 'domains', 'notes', 'accessPlugins']
     };
     function fieldsFor(cat) { return VISIBLE_FIELDS[cat] || VISIBLE_FIELDS.account; }
     // Strip fields that do not belong to the entry's type. Applied inside
@@ -988,12 +1034,19 @@ window.__ModuleLoader__.load({
         return target && target.title ? target.title + '(' + id + ')' : String(id);
       }).join('、');
     }
+    // Render accessible plugin IDs in exports; known ones get friendly names.
+    // Friendly names for the plugins we know about; other ids show as-is.
+    var ACCESS_PLUGIN_NAMES = { 'dsh-mail': '邮箱 (dsh-mail)', '@mysterycode-liwen/dsh-mail': '邮箱 (dsh-mail)' };
+    function formatAccess(list) {
+      if (!Array.isArray(list) || !list.length) return '';
+      return list.map(function (id) { return ACCESS_PLUGIN_NAMES[id] || id; }).join('、');
+    }
     // CSV shows the fields people actually read first; technical columns
     // (ID / timestamps) go last. Import maps by header label, so order is safe.
     var CSV_COLS = ['title', 'category', 'username', 'password', 'url', 'provider',
       'apiKey', 'endpoint', 'expiry', 'content', 'keyName', 'keyValue',
       'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
-      'notes', 'links', 'id', 'createdAt', 'updatedAt'];
+      'notes', 'links', 'accessPlugins', 'id', 'createdAt', 'updatedAt'];
     function buildCsv(arr) {
       var lines = [CSV_COLS.map(function (c) { return csvEscape(FIELD_LABELS[c] || c); }).join(',')];
       arr.forEach(function (e) {
@@ -1005,6 +1058,7 @@ window.__ModuleLoader__.load({
           if (visible.indexOf(c) < 0 && c !== 'id' && c !== 'category' && c !== 'createdAt' && c !== 'updatedAt') return '';
           var v = (c === 'createdAt' || c === 'updatedAt') ? csvDate(n[c]) : n[c];
           if (c === 'links') v = formatLinks(n.links, arr);
+          if (c === 'accessPlugins') v = formatAccess(n.accessPlugins);
           if (c === 'category') v = CATEGORY_LABELS[v] || v;
           return csvEscape(v);
         }).join(','));
@@ -1120,6 +1174,7 @@ window.__ModuleLoader__.load({
           if (c === 'title') return;
           var v = n[c];
           if (c === 'links') v = formatLinks(n.links, arr);
+          if (c === 'accessPlugins') v = formatAccess(n.accessPlugins);
           if (v == null || v === '') return;
           lines.push('| ' + (FIELD_LABELS[c] || c) + ' | ' + mdCell(v) + ' |');
         });
@@ -1459,7 +1514,7 @@ window.__ModuleLoader__.load({
         username: '', password: '', url: '',
         provider: '', apiKey: '', endpoint: '', expiry: '',
         content: '', keyName: '', keyValue: '',
-        links: [],
+        links: [], accessPlugins: [],
         appId: '', appSecret: '', token: '', encodingAesKey: '', serverUrl: '', uploadKey: '', domains: '',
         notes: ''
       };
@@ -1535,6 +1590,10 @@ window.__ModuleLoader__.load({
           onClick: function () { props.onGo(id); }
         }, '🔗 ' + target.title + (tc ? ' · ' + t(tc.label) : ''));
       }).filter(Boolean) : [];
+      var accessChips = Array.isArray(e.accessPlugins) && e.accessPlugins.length ? e.accessPlugins.map(function (id) {
+        var kn = ACCESS_PLUGIN_NAMES[id];
+        return h('span', { key: id, className: 'cv-access-chip' }, '🔌 ' + (kn ? kn : id));
+      }) : [];
       return h('div', { className: 'cv-card' },
         h('div', { className: 'cv-card-head' },
           h('span', { className: 'cv-badge cv-badge-' + cat }, catLabel),
@@ -1546,7 +1605,7 @@ window.__ModuleLoader__.load({
         ),
         h('div', { className: 'cv-card-body' },
           schemaOf(cat).slice(1).map(function (f) {
-            if (f.key === 'links') return null;
+            if (f.key === 'links' || f.key === 'accessPlugins') return null;
             if (!e[f.key]) return null;
             return h(Field, {
               key: f.key, t: t, label: f.label, value: e[f.key],
@@ -1555,7 +1614,9 @@ window.__ModuleLoader__.load({
             });
           }),
           linkChips.length ? h('div', { className: 'cv-links' },
-            h('div', { className: 'cv-field-label' }, t('fLinks')), linkChips) : null
+            h('div', { className: 'cv-field-label' }, t('fLinks')), linkChips) : null,
+          accessChips.length ? h('div', { className: 'cv-links' },
+            h('div', { className: 'cv-field-label' }, t('fAccessPlugins')), accessChips) : null
         )
       );
     }
@@ -1569,7 +1630,7 @@ window.__ModuleLoader__.load({
 
       // Only the essential fields show by default; the rest fold behind a
       // "More fields" toggle so short forms stay short and long forms compact.
-      var PRIMARY_KEYS = { title: 1, username: 1, password: 1, apiKey: 1, appId: 1, appSecret: 1, content: 1, keyName: 1, keyValue: 1, links: 1 };
+      var PRIMARY_KEYS = { title: 1, username: 1, password: 1, apiKey: 1, appId: 1, appSecret: 1, content: 1, keyName: 1, keyValue: 1, links: 1, accessPlugins: 1 };
       var primary = fields.filter(function (f) { return PRIMARY_KEYS[f.key]; });
       var secondary = fields.filter(function (f) { return !PRIMARY_KEYS[f.key]; });
       var hasSecondary = secondary.some(function (f) { return !!d[f.key]; });
@@ -1578,6 +1639,7 @@ window.__ModuleLoader__.load({
       var lkOpenState = useState(false), linksOpen = lkOpenState[0], setLinksOpen = lkOpenState[1];
       var lkQueryState = useState(''), linkQuery = lkQueryState[0], setLinkQuery = lkQueryState[1];
       var lkTypeState = useState('all'), linkType = lkTypeState[0], setLinkType = lkTypeState[1];
+      var acOtherState = useState(''), accessOther = acOtherState[0], setAccessOther = acOtherState[1];
       var lkRef = useRef(null);
       useEffect(function () {
         if (!linksOpen) return;
@@ -1595,7 +1657,7 @@ window.__ModuleLoader__.load({
         }, extra || {});
       }
       // Multiline fields and long values get a full row; everything else pairs up.
-      var WIDE_KEYS = { content: 1, notes: 1, endpoint: 1, serverUrl: 1, uploadKey: 1, domains: 1, encodingAesKey: 1, links: 1 };
+      var WIDE_KEYS = { content: 1, notes: 1, endpoint: 1, serverUrl: 1, uploadKey: 1, domains: 1, encodingAesKey: 1, links: 1, accessPlugins: 1 };
       function isWide(f) { return f.type === 'textarea' || f.type === 'secretarea' || !!WIDE_KEYS[f.key]; }
       function renderField(f) {
         var control;
@@ -1674,6 +1736,40 @@ window.__ModuleLoader__.load({
                 }) : h('span', { className: 'cv-link-empty' }, t('linkNoMatch'))
               )
             ) : null
+          );
+        } else if (f.type === 'access') {
+          var cur = Array.isArray(d.accessPlugins) ? d.accessPlugins.slice() : [];
+          var known = [
+            { id: 'dsh-mail', label: t('fAccessDshMail') }
+          ];
+          function addPlugin(id) {
+            id = String(id || '').trim();
+            if (id && cur.indexOf(id) < 0) { cur.push(id); onChange('accessPlugins', cur); }
+          }
+          function removePlugin(id) { onChange('accessPlugins', cur.filter(function (x) { return x !== id; })); }
+          control = h('div', { className: 'cv-access' },
+            h('div', { className: 'cv-access-hint' }, t('fAccessPluginsHint')),
+            h('div', { className: 'cv-access-chips' },
+              cur.length ? cur.map(function (id) {
+                var kn = known.filter(function (k) { return k.id === id; })[0];
+                return h('span', { key: id, className: 'cv-access-chip' },
+                  h('span', null, '🔌 ' + (kn ? kn.label : id)),
+                  h('button', { type: 'button', className: 'cv-access-x', title: t('fAccessRemove'), onClick: function () { removePlugin(id); } }, '×')
+                );
+              }) : h('span', { className: 'cv-access-hint' }, t('fAccessNone'))
+            ),
+            h('div', { className: 'cv-access-add' },
+              h('select', { value: '', onChange: function (ev) { addPlugin(ev.target.value); ev.target.value = ''; } },
+                h('option', { value: '' }, '+ ' + (known.filter(function (k) { return cur.indexOf(k.id) < 0; })[0] ? t('fAccessAdd') : t('fAccessOther'))),
+                known.filter(function (k) { return cur.indexOf(k.id) < 0; }).map(function (k) {
+                  return h('option', { key: k.id, value: k.id }, k.label);
+                })
+              ),
+              h('span', { className: 'cv-access-add' },
+                h('input', { type: 'text', placeholder: t('fAccessOtherPh'), value: accessOther, onChange: function (ev) { setAccessOther(ev.target.value); } }),
+                h('button', { type: 'button', className: 'cv-btn', onClick: function () { addPlugin(accessOther); setAccessOther(''); } }, t('fAccessAdd'))
+              )
+            )
           );
         } else if (f.type === 'text' || f.type === 'date') {
           control = h('input', baseInput(f, { type: f.type === 'date' ? 'date' : 'text' }));

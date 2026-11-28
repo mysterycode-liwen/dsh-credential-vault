@@ -23,11 +23,12 @@ const api = factory({
 const sample = [
   { id: 'id-1', title: 'GitHub', category: 'account', username: 'user@example.com',
     password: 'p@ss,word"with\nnewline', url: 'https://github.com', notes: 'line1\nline2',
-    links: ['id-2', 'id-6'],
+    links: ['id-2', 'id-6'], accessPlugins: ['dsh-mail'],
     createdAt: 1700000000000, updatedAt: 1700000001000 },
   { id: 'id-2', title: 'OpenAI | API', category: 'apikey', provider: 'OpenAI',
     apiKey: 'sk-abc,def\\ghi', endpoint: 'https://api.openai.com/v1', expiry: '2026-12-31',
-    notes: 'pipe | backslash \\ quote "', createdAt: 1700000002000, updatedAt: 1700000003000 },
+    notes: 'pipe | backslash \\ quote "', accessPlugins: ['other-plugin'],
+    createdAt: 1700000002000, updatedAt: 1700000003000 },
   { id: 'id-3', title: '恢复码', category: 'other', content: '中文,包含"引号"和|竖线\n第二行',
     notes: '多行\n文本', createdAt: 1700000004000, updatedAt: 1700000005000 },
   { id: 'id-4', title: '我的公众号', category: 'wechatMp', appId: 'wx1234567890abcdef',
@@ -177,6 +178,26 @@ const fromCardsLinks = api.parseMarkdown(allStripped);
 assert(Array.isArray(fromCardsLinks[0].links) && fromCardsLinks[0].links.indexOf('id-6') >= 0, 'hand-edited card recovers link IDs');
 const legacyLabel = api.parseCsv('\uFEFF标题,类型\n密钥测试,通用密钥');
 assert(legacyLabel[0].category === 'secretKey', 'legacy 通用密钥 label still maps to secretKey');
+
+console.log('\n== Accessible plugins (可访问插件) ==');
+const granted = api.normalize(sample[0]);
+assert(Array.isArray(granted.accessPlugins) && granted.accessPlugins.length === 1, 'account keeps accessPlugins array');
+assert(granted.accessPlugins[0] === 'dsh-mail', 'accessPlugins keeps the exact plugin id');
+const noGrant = api.normalize({ id: 'id-nogrant', title: '私有账号', category: 'account',
+  username: 'x@example.com', password: 'pw', createdAt: 1700000012000, updatedAt: 1700000013000 });
+assert(noGrant.accessPlugins === undefined, 'entry without a grant carries no accessPlugins');
+const grantedCsv = api.buildCsv([granted]);
+assert(grantedCsv.indexOf('可访问插件') !== -1, 'CSV has the 可访问插件 header');
+assert(grantedCsv.indexOf('邮箱 (dsh-mail)') !== -1, 'CSV shows a friendly plugin name');
+eqEntries(api.parseCsv(grantedCsv), [granted], 'csv round-trip with accessPlugins');
+const grantedMd = api.buildMarkdown([granted]);
+assert(grantedMd.indexOf('| 可访问插件 | 邮箱 (dsh-mail) |') !== -1, 'markdown card shows 可访问插件');
+eqEntries(api.parseMarkdown(grantedMd), [granted], 'markdown round-trip with accessPlugins');
+const grantedStripped = grantedMd.split('\n').filter((l) => l.indexOf('<!-- cv:') === -1).join('\n');
+const fromCardsAccess = api.parseMarkdown(grantedStripped);
+assert(Array.isArray(fromCardsAccess[0].accessPlugins) && fromCardsAccess[0].accessPlugins[0] === 'dsh-mail',
+  'hand-edited card recovers the plugin id');
+eqEntries(api.parseBackup(JSON.stringify(api.buildBackup([granted]))), [granted], 'json round-trip with accessPlugins');
 
 console.log('\n== WeChat categories round-trip ==');
 const wxMp = api.normalize(sample[3]);

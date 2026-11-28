@@ -46,7 +46,7 @@ const MAX_LIMIT = 200
 const SUMMARY_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'expiry', 'updatedAt']
 
 /** Current plugin version. Keep in sync with package.json when releasing. */
-const CURRENT_VERSION = '1.6.1'
+const CURRENT_VERSION = '1.7.0'
 
 /** Where update checks read the latest published version from (GitHub Releases latest). */
 const RELEASES_API = 'https://api.github.com/repos/mysterycode-liwen/dsh-credential-vault/releases/latest'
@@ -63,7 +63,7 @@ let snapshot = { entries: [], updatedAt: 0 }
  * is dropped, so the Host can never hold a plaintext password / key / body.
  */
 const META_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'keyName', 'url', 'endpoint', 'expiry',
-  'appId', 'serverUrl', 'domains', 'notes', 'links', 'createdAt', 'updatedAt']
+  'appId', 'serverUrl', 'domains', 'notes', 'links', 'accessPlugins', 'createdAt', 'updatedAt']
 
 /**
  * Force every incoming entry into a metadata-only shape. Applied defensively on

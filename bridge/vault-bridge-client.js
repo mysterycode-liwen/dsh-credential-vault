@@ -27,7 +27,7 @@
  *   never auto-authorises: each session is one-time use and expires in 60s.
  *
  * USAGE
- *   const vault = createVaultV1Client();
+ *   const vault = createVaultV1Client({ callerId: 'my-plugin-id' }); // REQUIRED for scoped reads
  *   if (vault.isAvailable()) {
  *     const entries = await vault.query({ category: 'account', title: 'qq' });
  *     const secret = vault.secretOf(entries[0]);  // real password / key value
@@ -38,6 +38,9 @@
 
 function createVaultV1Client(options) {
   options = options || {};
+  // Identity declared by the calling plugin. The vault only returns credentials
+  // whose "accessible plugins" list includes this id. Without it, nothing is returned.
+  var callerId = typeof options.callerId === 'string' && options.callerId.trim() ? options.callerId.trim() : '';
   var win = options.window || (typeof window !== 'undefined' ? window : null);
   var BRIDGE_KEY = '@mysterycode-liwen/dsh-credential-vault/bridge/v1';
 
@@ -124,7 +127,8 @@ function createVaultV1Client(options) {
           return seal(s, aes, {
             category: criteria.category || 'all',
             title: criteria.title || '',
-            limit: criteria.limit || 100
+            limit: criteria.limit || 100,
+            callerId: callerId
           }).then(function (sealed) {
             return b.query({
               sessionId: sessionId,
