@@ -46,7 +46,7 @@ const MAX_LIMIT = 200
 const SUMMARY_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'expiry', 'updatedAt']
 
 /** Current plugin version. Keep in sync with package.json when releasing. */
-const CURRENT_VERSION = '1.5.3'
+const CURRENT_VERSION = '1.6.0'
 
 /** Where update checks read the latest published version from (GitHub Releases latest). */
 const RELEASES_API = 'https://api.github.com/repos/mysterycode-liwen/dsh-credential-vault/releases/latest'

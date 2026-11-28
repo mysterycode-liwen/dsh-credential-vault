@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.5.3';
+    var VERSION = '1.6.0';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
