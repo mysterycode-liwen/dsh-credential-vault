@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.5.2';
+    var VERSION = '1.5.3';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -62,7 +62,7 @@ window.__ModuleLoader__.load({
         fExpiry: 'Expires on (optional)',
         fContent: 'Content / secret', fContentPh: 'Recovery codes, license key, certificate, PIN…',
         fNotes: 'Notes (optional)', fNotesPh: 'Any extra info…',
-        fLinks: 'Linked credentials', linkNone: 'No API Key / Key / Other credentials yet', linkMissing: 'Linked credential no longer exists',
+        fLinks: 'Linked credentials', linkNone: 'No API Key / Key / Other credentials yet', linkMissing: 'Linked credential no longer exists', linkPlaceholder: 'Select credentials…', linkSearch: 'Search by name…', linkSelected: 'selected', linkNoMatch: 'No matching credentials', linkClear: 'Clear',
         fAppId: 'AppID', fAppIdPh: 'wx…',
         fAppSecret: 'AppSecret', fAppSecretPh: 'Application secret',
         fToken: 'Server Token', fTokenPh: 'Token from server config',
@@ -192,7 +192,7 @@ window.__ModuleLoader__.load({
         fExpiry: '到期日期（可选）',
         fContent: '内容 / 密钥', fContentPh: '恢复码、许可证、证书、PIN…',
         fNotes: '备注（可选）', fNotesPh: '其他信息…',
-        fLinks: '关联凭据', linkNone: '还没有 API Key / 密钥 / 其他凭据', linkMissing: '关联的凭据已不存在',
+        fLinks: '关联凭据', linkNone: '还没有 API Key / 密钥 / 其他凭据', linkMissing: '关联的凭据已不存在', linkPlaceholder: '选择凭据…', linkSearch: '按名称搜索…', linkSelected: '项已选', linkNoMatch: '没有匹配的凭据', linkClear: '清空',
         fAppId: 'AppID', fAppIdPh: 'wx…',
         fAppSecret: 'AppSecret', fAppSecretPh: '应用密钥',
         fToken: '服务器 Token', fTokenPh: '服务器配置里的 Token',
@@ -431,9 +431,28 @@ window.__ModuleLoader__.load({
       '.cv-links{margin:10px 0 2px;padding-top:8px;border-top:1px dashed var(--cv-b1)}',
       '.cv-link-chip{display:inline-flex;align-items:center;gap:3px;margin:3px 5px 0 0;padding:4px 9px;border:1px solid var(--cv-b1);border-radius:999px;background:var(--cv-l2);color:var(--cv-brand);font-size:11.5px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.cv-link-chip:hover{border-color:var(--cv-brand)}',
-      '.cv-link-options{max-height:170px;overflow:auto;border:1px solid var(--cv-b1);border-radius:8px;padding:6px 9px;background:var(--cv-bg)}',
-      '.cv-link-opt{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12.5px;cursor:pointer}',
-      '.cv-link-empty{font-size:12px;color:var(--cv-t2)}',
+      '.cv-link-picker{position:relative}',
+      '.cv-link-picker-top{display:flex;gap:6px;align-items:center}',
+      '.cv-link-trigger{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:9px;border:1px solid var(--cv-b1);background:var(--cv-l1);color:var(--cv-t1);font-size:13px;cursor:pointer;text-align:left}',
+      '.cv-link-trigger:hover{border-color:var(--cv-b2)}',
+      '.cv-link-trigger-on{border-color:var(--cv-brand)}',
+      '.cv-link-caret{color:var(--cv-t2);font-size:11px}',
+      '.cv-link-clear{border:none;background:var(--cv-l2);color:var(--cv-t2);border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1}',
+      '.cv-link-selected{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}',
+      '.cv-link-sel-chip{display:inline-flex;align-items:center;gap:3px;padding:4px 6px 4px 9px;border-radius:999px;background:var(--cv-l2);border:1px solid var(--cv-b1);color:var(--cv-brand);font-size:11.5px;max-width:100%}',
+      '.cv-link-sel-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}',
+      '.cv-link-sel-x{border:none;background:transparent;color:var(--cv-t2);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}',
+      '.cv-link-sel-x:hover{color:var(--cv-err)}',
+      '.cv-link-popover{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 6px);padding:9px;border:1px solid var(--cv-b1);border-radius:10px;background:var(--cv-bg);box-shadow:0 8px 24px rgba(0,0,0,.16)}',
+      '.cv-link-search{width:100%;padding:8px 10px;font-size:12.5px}',
+      '.cv-link-typechips{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}',
+      '.cv-link-typechip{padding:4px 10px;border-radius:999px;border:1px solid var(--cv-b1);background:transparent;color:var(--cv-t2);font-size:11.5px;cursor:pointer}',
+      '.cv-link-typechip:hover{background:var(--cv-l2)}',
+      '.cv-link-typechip-on{background:var(--cv-brand);border-color:var(--cv-brand);color:var(--cv-bg)}',
+      '.cv-link-options{max-height:170px;overflow:auto;border:1px solid var(--cv-b1);border-radius:8px;padding:6px 9px;background:var(--cv-l1)}',
+      '.cv-link-opt{display:flex;align-items:center;gap:7px;padding:5px 2px;font-size:12.5px;cursor:pointer}',
+      '.cv-link-opt:hover{background:var(--cv-l2)}',
+      '.cv-link-empty{font-size:12px;color:var(--cv-t2);padding:8px 2px}',
       '.cv-card-title{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.cv-card-actions{display:flex;gap:4px}',
       '.cv-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--cv-t2);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}',
@@ -1444,6 +1463,17 @@ window.__ModuleLoader__.load({
       var secondary = fields.filter(function (f) { return !PRIMARY_KEYS[f.key]; });
       var hasSecondary = secondary.some(function (f) { return !!d[f.key]; });
       var moreState = useState(hasSecondary), showMore = moreState[0], setShowMore = moreState[1];
+      // Link picker: dropdown with search + type filter (account "linked credentials").
+      var lkOpenState = useState(false), linksOpen = lkOpenState[0], setLinksOpen = lkOpenState[1];
+      var lkQueryState = useState(''), linkQuery = lkQueryState[0], setLinkQuery = lkQueryState[1];
+      var lkTypeState = useState('all'), linkType = lkTypeState[0], setLinkType = lkTypeState[1];
+      var lkRef = useRef(null);
+      useEffect(function () {
+        if (!linksOpen) return;
+        function onDoc(ev) { if (lkRef.current && !lkRef.current.contains(ev.target)) setLinksOpen(false); }
+        document.addEventListener('mousedown', onDoc);
+        return function () { document.removeEventListener('mousedown', onDoc); };
+      }, [linksOpen]);
 
       function baseInput(f, extra) {
         return Object.assign({
@@ -1463,21 +1493,76 @@ window.__ModuleLoader__.load({
             return x.id !== d.id && ['apikey', 'secretKey', 'other'].indexOf(x.category) >= 0;
           });
           var selected = Array.isArray(d.links) ? d.links : [];
-          control = h('div', { className: 'cv-link-options' },
-            candidates.length ? candidates.map(function (x) {
-              var checked = selected.indexOf(x.id) >= 0;
-              var cm = CATEGORIES.filter(function (c) { return c.k === x.category; })[0];
-              return h('label', { key: x.id, className: 'cv-link-opt' },
-                h('input', {
-                  type: 'checkbox', checked: checked,
-                  onChange: function () {
-                    var next = checked ? selected.filter(function (lid) { return lid !== x.id; }) : selected.concat([x.id]);
-                    onChange('links', next);
-                  }
-                }),
-                h('span', null, x.title + (cm ? ' · ' + t(cm.label) : ''))
-              );
-            }) : h('span', { className: 'cv-link-empty' }, t('linkNone'))
+          function toggleLink(id) {
+            var next = selected.indexOf(id) >= 0
+              ? selected.filter(function (lid) { return lid !== id; })
+              : selected.concat([id]);
+            onChange('links', next);
+          }
+          var typeOpts = [
+            { k: 'all', label: 'filterAll' },
+            { k: 'apikey', label: 'filterApikey' },
+            { k: 'secretKey', label: 'filterSecretKey' },
+            { k: 'other', label: 'filterOther' }
+          ];
+          var shown = candidates.filter(function (x) {
+            if (linkType !== 'all' && x.category !== linkType) return false;
+            var q = linkQuery.trim().toLowerCase();
+            return !q || String(x.title || '').toLowerCase().indexOf(q) >= 0;
+          });
+          control = h('div', { className: 'cv-link-picker', ref: lkRef },
+            h('div', { className: 'cv-link-picker-top' },
+              h('button', {
+                type: 'button', className: 'cv-link-trigger' + (linksOpen ? ' cv-link-trigger-on' : ''),
+                onClick: function () { setLinksOpen(!linksOpen); }
+              },
+                h('span', null, selected.length ? (selected.length + ' ' + t('linkSelected')) : t('linkPlaceholder')),
+                h('span', { className: 'cv-link-caret' }, linksOpen ? '▴' : '▾')
+              ),
+              selected.length ? h('button', {
+                type: 'button', className: 'cv-link-clear', title: t('linkClear'),
+                onClick: function () { onChange('links', []); }
+              }, '×') : null
+            ),
+            selected.length ? h('div', { className: 'cv-link-selected' },
+              selected.map(function (id) {
+                var tgt = candidates.filter(function (x) { return x.id === id; })[0];
+                var label = tgt ? tgt.title : t('linkMissing');
+                return h('span', { key: id, className: 'cv-link-sel-chip', title: label },
+                  h('span', { className: 'cv-link-sel-text' }, '🔗 ' + label),
+                  h('button', {
+                    type: 'button', className: 'cv-link-sel-x', title: t('linkClear'),
+                    onClick: function () { toggleLink(id); }
+                  }, '×')
+                );
+              })
+            ) : null,
+            linksOpen ? h('div', { className: 'cv-link-popover' },
+              h('input', {
+                className: 'cv-input cv-link-search', type: 'text',
+                placeholder: t('linkSearch'), value: linkQuery,
+                onChange: function (ev) { setLinkQuery(ev.target.value); }
+              }),
+              h('div', { className: 'cv-link-typechips' },
+                typeOpts.map(function (o) {
+                  return h('button', {
+                    type: 'button', key: o.k,
+                    className: 'cv-link-typechip' + (linkType === o.k ? ' cv-link-typechip-on' : ''),
+                    onClick: function () { setLinkType(o.k); }
+                  }, t(o.label));
+                })
+              ),
+              h('div', { className: 'cv-link-options' },
+                shown.length ? shown.map(function (x) {
+                  var checked = selected.indexOf(x.id) >= 0;
+                  var cm = CATEGORIES.filter(function (c) { return c.k === x.category; })[0];
+                  return h('label', { key: x.id, className: 'cv-link-opt' },
+                    h('input', { type: 'checkbox', checked: checked, onChange: function () { toggleLink(x.id); } }),
+                    h('span', null, x.title + (cm ? ' · ' + t(cm.label) : ''))
+                  );
+                }) : h('span', { className: 'cv-link-empty' }, t('linkNoMatch'))
+              )
+            ) : null
           );
         } else if (f.type === 'text' || f.type === 'date') {
           control = h('input', baseInput(f, { type: f.type === 'date' ? 'date' : 'text' }));
