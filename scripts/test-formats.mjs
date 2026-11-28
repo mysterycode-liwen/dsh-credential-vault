@@ -23,6 +23,7 @@ const api = factory({
 const sample = [
   { id: 'id-1', title: 'GitHub', category: 'account', username: 'user@example.com',
     password: 'p@ss,word"with\nnewline', url: 'https://github.com', notes: 'line1\nline2',
+    links: ['id-2', 'id-6'],
     createdAt: 1700000000000, updatedAt: 1700000001000 },
   { id: 'id-2', title: 'OpenAI | API', category: 'apikey', provider: 'OpenAI',
     apiKey: 'sk-abc,def\\ghi', endpoint: 'https://api.openai.com/v1', expiry: '2026-12-31',
@@ -146,12 +147,12 @@ assert(importedMd[0].username === undefined && importedMd[0].password === undefi
 // And normalize() itself (used when loading from localStorage) cleans stale fields.
 assert(api.normalize(dirty).username === undefined, 'normalize() strips stale fields on load');
 
-console.log('\n== Secret key category (通用密钥) ==');
+console.log('\n== Secret key category (密钥) ==');
 const sk = api.normalize(sample[5]);
 assert(sk.keyName === 'webhook-secret' && sk.keyValue === 'whsec-abc123-XYZ', 'secretKey keeps its own fields');
 assert(sk.username === undefined && sk.password === undefined && sk.apiKey === undefined, 'secretKey strips unrelated fields');
 const skMd = api.buildMarkdown([sk]);
-assert(skMd.indexOf('| 类型 | 通用密钥 |') !== -1, 'secretKey card shows 类型 = 通用密钥');
+assert(skMd.indexOf('| 类型 | 密钥 |') !== -1, 'secretKey card shows 类型 = 密钥');
 assert(skMd.indexOf('| 密钥名称 | webhook-secret |') !== -1, 'secretKey card shows 密钥名称');
 assert(skMd.indexOf('| 密钥值 | whsec-abc123-XYZ |') !== -1, 'secretKey card shows 密钥值');
 eqEntries(api.parseMarkdown(skMd), [sk], 'secretKey markdown round-trip');
@@ -161,6 +162,21 @@ assert(skCsv.indexOf('密钥名称') < skCsv.indexOf('ID'), 'secretKey CSV keeps
 eqEntries(api.parseCsv(skCsv), [sk], 'secretKey CSV round-trip');
 eqEntries(api.parseBackup(JSON.stringify(api.buildBackup([sk]))), [sk], 'secretKey JSON round-trip');
 assert(api.FIELD_LABELS.keyName === '密钥名称' && api.FIELD_LABELS.keyValue === '密钥值', 'FIELD_LABELS has secretKey fields');
+
+console.log('\n== Linked credentials (关联凭据) ==');
+const acct = api.normalize(sample[0]);
+assert(Array.isArray(acct.links) && acct.links.length === 2, 'account keeps links array');
+assert(acct.links[0] === 'id-2' && acct.links[1] === 'id-6', 'links keep exact IDs');
+const allCsv = api.buildCsv(normalized);
+assert(allCsv.indexOf('OpenAI | API(id-2)') !== -1, 'CSV shows linked credential titles');
+eqEntries(api.parseCsv(allCsv), normalized, 'csv round-trip with links');
+const allMd = api.buildMarkdown(normalized);
+eqEntries(api.parseMarkdown(allMd), normalized, 'markdown round-trip with links');
+const allStripped = allMd.split('\n').filter((l) => l.indexOf('<!-- cv:') === -1).join('\n');
+const fromCardsLinks = api.parseMarkdown(allStripped);
+assert(Array.isArray(fromCardsLinks[0].links) && fromCardsLinks[0].links.indexOf('id-6') >= 0, 'hand-edited card recovers link IDs');
+const legacyLabel = api.parseCsv('\uFEFF标题,类型\n密钥测试,通用密钥');
+assert(legacyLabel[0].category === 'secretKey', 'legacy 通用密钥 label still maps to secretKey');
 
 console.log('\n== WeChat categories round-trip ==');
 const wxMp = api.normalize(sample[3]);

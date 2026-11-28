@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
     // whatever port the Web GUI is on.
     var API = 'dsh-credential-vault/';
     /** Plugin version shown in Settings; keep in sync with package.json on release. */
-    var VERSION = '1.5.1';
+    var VERSION = '1.5.2';
 
     // Compare two semver-ish strings: -1 (left older), 0 (equal), 1 (left newer).
     // Used to decide "update available" against THIS client's version, so the
@@ -62,6 +62,7 @@ window.__ModuleLoader__.load({
         fExpiry: 'Expires on (optional)',
         fContent: 'Content / secret', fContentPh: 'Recovery codes, license key, certificate, PIN…',
         fNotes: 'Notes (optional)', fNotesPh: 'Any extra info…',
+        fLinks: 'Linked credentials', linkNone: 'No API Key / Key / Other credentials yet', linkMissing: 'Linked credential no longer exists',
         fAppId: 'AppID', fAppIdPh: 'wx…',
         fAppSecret: 'AppSecret', fAppSecretPh: 'Application secret',
         fToken: 'Server Token', fTokenPh: 'Token from server config',
@@ -169,7 +170,7 @@ window.__ModuleLoader__.load({
         sort: '排序', sortRecent: '最近更新', sortTitle: '名称（A–Z）', sortCategory: '类型',
         search: '搜索名称、账号、网址或备注…',
         filterAll: '全部', filterAccount: '账号密码', filterApikey: 'API Key', filterOther: '其他',
-        filterWechatMp: '微信公众号', filterWechatMini: '微信小程序', filterSecretKey: '通用密钥',
+        filterWechatMp: '微信公众号', filterWechatMini: '微信小程序', filterSecretKey: '密钥',
         localNotice: '数据仅保存在本机浏览器的 localStorage 中，不跨设备同步、不加密，请避免在公用/共享浏览器使用。',
         show: '显示', hide: '隐藏', copy: '复制', visit: '访问', copied: '已复制到剪贴板', copyFail: '复制失败，请手动选择文本',
         visitFail: '无法打开浏览器，请检查网址后重试。',
@@ -191,6 +192,7 @@ window.__ModuleLoader__.load({
         fExpiry: '到期日期（可选）',
         fContent: '内容 / 密钥', fContentPh: '恢复码、许可证、证书、PIN…',
         fNotes: '备注（可选）', fNotesPh: '其他信息…',
+        fLinks: '关联凭据', linkNone: '还没有 API Key / 密钥 / 其他凭据', linkMissing: '关联的凭据已不存在',
         fAppId: 'AppID', fAppIdPh: 'wx…',
         fAppSecret: 'AppSecret', fAppSecretPh: '应用密钥',
         fToken: '服务器 Token', fTokenPh: '服务器配置里的 Token',
@@ -201,7 +203,7 @@ window.__ModuleLoader__.load({
         fKeyName: '密钥名称', fKeyNamePh: '例如：访问令牌、Webhook 密钥',
         fKeyValue: '密钥值', fKeyValuePh: '粘贴令牌 / 密钥 / 口令',
         catAccount: '账号密码', catApikey: 'API Key', catOther: '其他',
-        catWechatMp: '微信公众号', catWechatMini: '微信小程序', catSecretKey: '通用密钥',
+        catWechatMp: '微信公众号', catWechatMini: '微信小程序', catSecretKey: '密钥',
         hintAccount: '用于保存网站 / 应用的登录账号与密码。',
         hintApikey: '用于保存平台签发的 API Key、令牌与接口地址。',
         hintOther: '用于保存恢复码、许可证、证书等任意文本。',
@@ -303,6 +305,7 @@ window.__ModuleLoader__.load({
         { key: 'username', label: 'fAccount', ph: 'fAccountPh', type: 'text', mono: true },
         { key: 'password', label: 'fPassword', ph: 'fPasswordPh', type: 'secret', mono: true, generatable: true },
         { key: 'url', label: 'fUrl', ph: 'fUrlPh', type: 'text', isUrl: true },
+        { key: 'links', label: 'fLinks', type: 'links' },
         { key: 'notes', label: 'fNotes', ph: 'fNotesPh', type: 'textarea' }
       ],
       apikey: [
@@ -425,6 +428,12 @@ window.__ModuleLoader__.load({
       '.cv-badge-wechatMp{background:#07c160;color:#fff}',
       '.cv-badge-wechatMini{background:#10aec2;color:#fff}',
       '.cv-badge-secretKey{background:#8b5cf6;color:#fff}',
+      '.cv-links{margin:10px 0 2px;padding-top:8px;border-top:1px dashed var(--cv-b1)}',
+      '.cv-link-chip{display:inline-flex;align-items:center;gap:3px;margin:3px 5px 0 0;padding:4px 9px;border:1px solid var(--cv-b1);border-radius:999px;background:var(--cv-l2);color:var(--cv-brand);font-size:11.5px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.cv-link-chip:hover{border-color:var(--cv-brand)}',
+      '.cv-link-options{max-height:170px;overflow:auto;border:1px solid var(--cv-b1);border-radius:8px;padding:6px 9px;background:var(--cv-bg)}',
+      '.cv-link-opt{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12.5px;cursor:pointer}',
+      '.cv-link-empty{font-size:12px;color:var(--cv-t2)}',
       '.cv-card-title{font-weight:600;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.cv-card-actions{display:flex;gap:4px}',
       '.cv-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--cv-t2);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}',
@@ -569,6 +578,17 @@ window.__ModuleLoader__.load({
         if (n.provider == null && n.username) n.provider = n.username;
         if (n.endpoint == null && n.url) n.endpoint = n.url;
       }
+      // Links are credential IDs. Accept arrays, the human-readable "Title(id)"
+      // form used in CSV/Markdown exports, and the legacy comma-separated form.
+      if (Array.isArray(n.links)) {
+        n.links = n.links.map(function (x) { return String(x); }).filter(Boolean);
+      } else if (typeof n.links === 'string' && n.links.trim()) {
+        var ids = [], lm, lre = /[（(]([^()）]+)[)）]/g;
+        while ((lm = lre.exec(n.links)) !== null) ids.push(lm[1].trim());
+        n.links = ids.length ? ids : n.links.split(/[,，、]/).map(function (x) { return x.trim(); }).filter(Boolean);
+      } else {
+        delete n.links;
+      }
       return sanitize(n);
     }
     function loadEntries() {
@@ -596,7 +616,7 @@ window.__ModuleLoader__.load({
     // Large vaults: DEBOUNCE so a burst of edits results in one POST, not dozens
     // of multi-megabyte payloads. A trailing timer always flushes the latest data.
     var MIRROR_FIELDS = ['id', 'title', 'category', 'username', 'provider', 'keyName', 'url', 'endpoint', 'expiry',
-      'appId', 'serverUrl', 'domains', 'notes', 'createdAt', 'updatedAt'];
+      'appId', 'serverUrl', 'domains', 'notes', 'links', 'createdAt', 'updatedAt'];
     var MIRROR_SECRETS = ['password', 'apiKey', 'content', 'appSecret', 'token', 'encodingAesKey', 'uploadKey', 'keyValue'];
     function toEnvelope(entry) {
       var out = {};
@@ -775,7 +795,7 @@ window.__ModuleLoader__.load({
     }
     var EXPORT_COLS = ['id', 'title', 'category', 'username', 'password', 'url', 'provider', 'apiKey', 'endpoint', 'expiry', 'content', 'keyName', 'keyValue',
       'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
-      'notes', 'createdAt', 'updatedAt'];
+      'notes', 'links', 'createdAt', 'updatedAt'];
 
     // ---- Human-readable labels ------------------------------------------------
     // CSV/Markdown use Chinese labels for people; every label maps back to its
@@ -786,18 +806,19 @@ window.__ModuleLoader__.load({
       expiry: '有效期', content: '内容', keyName: '密钥名称', keyValue: '密钥值',
       appId: 'AppID', appSecret: 'AppSecret', token: '服务器Token', encodingAesKey: 'EncodingAESKey',
       serverUrl: '服务器地址', uploadKey: '代码上传密钥', domains: '服务器域名',
-      notes: '备注', createdAt: '创建时间', updatedAt: '更新时间'
+      notes: '备注', links: '关联凭据', createdAt: '创建时间', updatedAt: '更新时间'
     };
     var LABEL_FIELDS = {};
     Object.keys(FIELD_LABELS).forEach(function (k) { LABEL_FIELDS[FIELD_LABELS[k]] = k; });
-    var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', secretKey: '通用密钥', other: '其他', wechatMp: '微信公众号', wechatMini: '微信小程序' };
+    var CATEGORY_LABELS = { account: '账号', apikey: 'API Key', secretKey: '密钥', other: '其他', wechatMp: '微信公众号', wechatMini: '微信小程序' };
     var LABEL_CATEGORIES = {};
     Object.keys(CATEGORY_LABELS).forEach(function (k) { LABEL_CATEGORIES[CATEGORY_LABELS[k]] = k; });
+    LABEL_CATEGORIES['通用密钥'] = 'secretKey'; // legacy exports before the rename
     // Only export fields that belong to the entry's type. A record may carry
     // stale fields from a past type change (e.g. an API Key with leftover
     // username/password/url); those must not leak into readable exports.
     var VISIBLE_FIELDS = {
-      account: ['title', 'username', 'password', 'url', 'notes'],
+      account: ['title', 'username', 'password', 'url', 'links', 'notes'],
       apikey: ['title', 'provider', 'apiKey', 'endpoint', 'expiry', 'notes'],
       secretKey: ['title', 'keyName', 'keyValue', 'notes'],
       other: ['title', 'content', 'notes'],
@@ -829,12 +850,20 @@ window.__ModuleLoader__.load({
       var d = new Date(Number(v));
       return isNaN(d.getTime()) ? String(v) : d.toISOString();
     }
+    // Render links as "Linked title(id)" so exports stay readable AND re-importable.
+    function formatLinks(links, arr) {
+      if (!Array.isArray(links) || !links.length) return '';
+      return links.map(function (id) {
+        var target = arr.filter(function (x) { return x.id === id; })[0];
+        return target && target.title ? target.title + '(' + id + ')' : String(id);
+      }).join('、');
+    }
     // CSV shows the fields people actually read first; technical columns
     // (ID / timestamps) go last. Import maps by header label, so order is safe.
     var CSV_COLS = ['title', 'category', 'username', 'password', 'url', 'provider',
       'apiKey', 'endpoint', 'expiry', 'content', 'keyName', 'keyValue',
       'appId', 'appSecret', 'token', 'encodingAesKey', 'serverUrl', 'uploadKey', 'domains',
-      'notes', 'id', 'createdAt', 'updatedAt'];
+      'notes', 'links', 'id', 'createdAt', 'updatedAt'];
     function buildCsv(arr) {
       var lines = [CSV_COLS.map(function (c) { return csvEscape(FIELD_LABELS[c] || c); }).join(',')];
       arr.forEach(function (e) {
@@ -845,6 +874,7 @@ window.__ModuleLoader__.load({
           // do not belong to this type are left blank.
           if (visible.indexOf(c) < 0 && c !== 'id' && c !== 'category' && c !== 'createdAt' && c !== 'updatedAt') return '';
           var v = (c === 'createdAt' || c === 'updatedAt') ? csvDate(n[c]) : n[c];
+          if (c === 'links') v = formatLinks(n.links, arr);
           if (c === 'category') v = CATEGORY_LABELS[v] || v;
           return csvEscape(v);
         }).join(','));
@@ -959,6 +989,7 @@ window.__ModuleLoader__.load({
         fieldsFor(n.category).forEach(function (c) {
           if (c === 'title') return;
           var v = n[c];
+          if (c === 'links') v = formatLinks(n.links, arr);
           if (v == null || v === '') return;
           lines.push('| ' + (FIELD_LABELS[c] || c) + ' | ' + mdCell(v) + ' |');
         });
@@ -1298,6 +1329,7 @@ window.__ModuleLoader__.load({
         username: '', password: '', url: '',
         provider: '', apiKey: '', endpoint: '', expiry: '',
         content: '', keyName: '', keyValue: '',
+        links: [],
         appId: '', appSecret: '', token: '', encodingAesKey: '', serverUrl: '', uploadKey: '', domains: '',
         notes: ''
       };
@@ -1364,6 +1396,15 @@ window.__ModuleLoader__.load({
       var cat = e.category || 'account';
       var catMeta = CATEGORIES.filter(function (c) { return c.k === cat; })[0];
       var catLabel = catMeta ? t(catMeta.label) : t('catAccount');
+      var linkChips = Array.isArray(e.links) && e.links.length ? e.links.map(function (id) {
+        var target = (props.entries || []).filter(function (x) { return x.id === id; })[0];
+        if (!target) return null;
+        var tc = CATEGORIES.filter(function (c) { return c.k === target.category; })[0];
+        return h('button', {
+          key: id, className: 'cv-link-chip', title: target.title,
+          onClick: function () { props.onGo(id); }
+        }, '🔗 ' + target.title + (tc ? ' · ' + t(tc.label) : ''));
+      }).filter(Boolean) : [];
       return h('div', { className: 'cv-card' },
         h('div', { className: 'cv-card-head' },
           h('span', { className: 'cv-badge cv-badge-' + cat }, catLabel),
@@ -1375,13 +1416,16 @@ window.__ModuleLoader__.load({
         ),
         h('div', { className: 'cv-card-body' },
           schemaOf(cat).slice(1).map(function (f) {
+            if (f.key === 'links') return null;
             if (!e[f.key]) return null;
             return h(Field, {
               key: f.key, t: t, label: f.label, value: e[f.key],
               mono: !!f.mono, secret: isSecretField(f), multiline: isMultilineField(f), isUrl: !!f.isUrl,
               revealed: !!props.revealed, onToggle: props.onToggle, onCopy: props.onCopy, onVisit: props.onVisit
             });
-          })
+          }),
+          linkChips.length ? h('div', { className: 'cv-links' },
+            h('div', { className: 'cv-field-label' }, t('fLinks')), linkChips) : null
         )
       );
     }
@@ -1395,7 +1439,7 @@ window.__ModuleLoader__.load({
 
       // Only the essential fields show by default; the rest fold behind a
       // "More fields" toggle so short forms stay short and long forms compact.
-      var PRIMARY_KEYS = { title: 1, username: 1, password: 1, apiKey: 1, appId: 1, appSecret: 1, content: 1, keyName: 1, keyValue: 1 };
+      var PRIMARY_KEYS = { title: 1, username: 1, password: 1, apiKey: 1, appId: 1, appSecret: 1, content: 1, keyName: 1, keyValue: 1, links: 1 };
       var primary = fields.filter(function (f) { return PRIMARY_KEYS[f.key]; });
       var secondary = fields.filter(function (f) { return !PRIMARY_KEYS[f.key]; });
       var hasSecondary = secondary.some(function (f) { return !!d[f.key]; });
@@ -1410,11 +1454,32 @@ window.__ModuleLoader__.load({
         }, extra || {});
       }
       // Multiline fields and long values get a full row; everything else pairs up.
-      var WIDE_KEYS = { content: 1, notes: 1, endpoint: 1, serverUrl: 1, uploadKey: 1, domains: 1, encodingAesKey: 1 };
+      var WIDE_KEYS = { content: 1, notes: 1, endpoint: 1, serverUrl: 1, uploadKey: 1, domains: 1, encodingAesKey: 1, links: 1 };
       function isWide(f) { return f.type === 'textarea' || f.type === 'secretarea' || !!WIDE_KEYS[f.key]; }
       function renderField(f) {
         var control;
-        if (f.type === 'text' || f.type === 'date') {
+        if (f.type === 'links') {
+          var candidates = (props.entries || []).filter(function (x) {
+            return x.id !== d.id && ['apikey', 'secretKey', 'other'].indexOf(x.category) >= 0;
+          });
+          var selected = Array.isArray(d.links) ? d.links : [];
+          control = h('div', { className: 'cv-link-options' },
+            candidates.length ? candidates.map(function (x) {
+              var checked = selected.indexOf(x.id) >= 0;
+              var cm = CATEGORIES.filter(function (c) { return c.k === x.category; })[0];
+              return h('label', { key: x.id, className: 'cv-link-opt' },
+                h('input', {
+                  type: 'checkbox', checked: checked,
+                  onChange: function () {
+                    var next = checked ? selected.filter(function (lid) { return lid !== x.id; }) : selected.concat([x.id]);
+                    onChange('links', next);
+                  }
+                }),
+                h('span', null, x.title + (cm ? ' · ' + t(cm.label) : ''))
+              );
+            }) : h('span', { className: 'cv-link-empty' }, t('linkNone'))
+          );
+        } else if (f.type === 'text' || f.type === 'date') {
           control = h('input', baseInput(f, { type: f.type === 'date' ? 'date' : 'text' }));
         } else if (f.type === 'textarea') {
           control = h('textarea', baseInput(f, { className: 'cv-input cv-textarea' }));
@@ -2442,7 +2507,12 @@ window.__ModuleLoader__.load({
       }
       function delEntry(id) {
         if (!window.confirm(t('confirmDelete'))) return;
-        setEntries(function (prev) { return prev.filter(function (x) { return x.id !== id; }); });
+        setEntries(function (prev) {
+          return prev.filter(function (x) { return x.id !== id; }).map(function (x) {
+            if (!Array.isArray(x.links) || x.links.indexOf(id) < 0) return x;
+            return Object.assign({}, x, { links: x.links.filter(function (lid) { return lid !== id; }) });
+          });
+        });
         setToast(t('deleted'));
       }
       function doExport() {
@@ -2475,6 +2545,12 @@ window.__ModuleLoader__.load({
         if (genTarget && genTarget.field) setDraftField(genTarget.field, pw);
         setGenTarget(null);
         setToast(t('copied'));
+      }
+      function goToEntry(id) {
+        var target = entries.filter(function (x) { return x.id === id; })[0];
+        if (!target) { setToast(t('linkMissing')); return; }
+        setFilter('all');
+        setQuery(target.title || '');
       }
       function auditEditEntry(id) {
         var e = entries.filter(function (x) { return x.id === id; })[0];
@@ -2552,6 +2628,7 @@ window.__ModuleLoader__.load({
                 : list.map(function (e) {
                     return h(Card, {
                       key: e.id, entry: e, t: t, revealed: !!revealed[e.id],
+                      entries: entries, onGo: goToEntry,
                       onToggle: function () { toggleReveal(e.id); },
                       onEdit: function () { openEdit(e); },
                       onDelete: function () { delEntry(e.id); },
@@ -2564,6 +2641,7 @@ window.__ModuleLoader__.load({
         ),
         editing ? h(EditorModal, {
           t: t, draft: editing.draft, titleKey: editing.mode === 'new' ? 'editorNew' : 'editorEdit',
+          entries: entries,
           onChange: setDraftField, onSave: saveDraft, onCancel: function () { setEditing(null); },
           onGenerate: function (field) { setGenTarget({ field: field }); }
         }) : null,

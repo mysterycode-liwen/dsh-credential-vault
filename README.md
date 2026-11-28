@@ -126,6 +126,12 @@ Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理�
 
 ## 更新日志 / Changelog
 
+### 1.5.2 — 2026-11-28 — 账号关联凭据与类型改名
+
+- **账号可关联其它凭据**：账号类型新增「关联凭据」字段，编辑时多选已有的 API Key / 密钥 / 其他凭据（不含账号自身）；卡片上以可点击标签展示，点击直接跳转定位。
+- **关联无损**：关联关系随 JSON / CSV / Markdown 三格式无损导回（显示为 `标题(id)`），删除凭据时自动清理其它条目对它的引用，不留死链。
+- **「通用密钥」改名为「密钥」**：界面显示名全部更新，内部类型 key 保持 `secretKey`；旧导出文件中的「通用密钥」标签仍兼容识别。
+
 ### 1.5.1 — 2026-11-28 — 新增「通用密钥」类型
 
 - **新增凭据类型「通用密钥」**（`secretKey`）：标题 + 密钥名称 + 密钥值 + 备注，适合保存零散的 token / secret / 口令，密钥值默认脱敏。
@@ -186,7 +192,7 @@ Host 侧工具在 Harness 启动时注册。重启 Harness，或在插件管理�
 npm run check        # 发布前自检：client.js 的模块 id 与 cordis.patch.yml 的 name 必须等于包名
 npm pack --dry-run   # 核对实际打包的文件清单
 npm publish          # publishConfig.access = public；会先自动跑一次 npm run check，不一致则中止
-git tag v1.4.2 && git push --tags
+git tag v1.5.2 && git push --tags
 ```
 
 `client.js` 里 `window.__ModuleLoader__.load({ id })` 的 `id` **必须等于 `package.json` 的 `name`**：DSH 按包名去浏览器模块表里查找，不一致时浏览器端不会挂载，表现为侧边栏入口与设置页整块消失（Host 端仍然正常）。改包名或改 scope 时，三处要同步：`package.json` 的 `name`、`client.js` 的 `id`、`cordis.patch.yml` 的 `name`。
